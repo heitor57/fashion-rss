@@ -1,0 +1,6 @@
+
+
+
+RATE = 0.05
+
+RANDOM_SEED = 1

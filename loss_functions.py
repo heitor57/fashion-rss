@@ -1,10 +1,13 @@
 import torch
+
+
 class LossFunction:
     pass
+
+
 class BPRLoss(LossFunction):
-    def __init__(self,
-                 recmodel : PairWiseModel,
-                 config : dict):
+
+    def __init__(self, recmodel, config: dict):
         self.model = recmodel
         self.weight_decay = config['decay']
         self.lr = config['lr']
@@ -12,7 +15,7 @@ class BPRLoss(LossFunction):
 
     def stageOne(self, users, pos, neg):
         loss, reg_loss = self.model.bpr_loss(users, pos, neg)
-        reg_loss = reg_loss*self.weight_decay
+        reg_loss = reg_loss * self.weight_decay
         loss = loss + reg_loss
 
         self.opt.zero_grad()
@@ -20,4 +23,3 @@ class BPRLoss(LossFunction):
         self.opt.step()
 
         return loss.cpu().item()
-

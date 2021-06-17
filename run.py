@@ -7,14 +7,13 @@ from tqdm import tqdm
 import time
 import dataset
 
-train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids = dataset.FarfetchTrainTestNormalization().process(
-dataset.ParquetLoad(file_name='data_phase1/train.parquet').process(),
-dataset.ParquetLoad(file_name='data_phase1/validation.parquet').process(),
-dataset.ParquetLoad(file_name='data_phase1/attributes.parquet').process()
+train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids = dataset.farfetch_train_test_normalization(
+dataset.parquet_load(file_name='data_phase1/train.parquet'),
+dataset.parquet_load(file_name='data_phase1/validation.parquet'),
+dataset.parquet_load(file_name='data_phase1/attributes.parquet')
 )
 
-
-print(dataset.NegativeSamples().process(train_normalized_df))
+print(dataset.negative_samples(train_normalized_df,))
 # num_users = len(user_int_ids)
 # num_items = len(product_int_ids)
 # embedding_dim = 30
@@ -66,7 +65,3 @@ print(dataset.NegativeSamples().process(train_normalized_df))
 # df['product_id'] = df['product_id'].map(lambda x: tmp[x])
 # df.columns = ['query_id', 'product_id', 'rank']
 # df.to_csv('data_phase1/output.csv', index=False)
-
-
-
-

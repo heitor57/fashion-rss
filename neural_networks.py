@@ -69,7 +69,7 @@ class BilinearNet(nn.Module):
 
     def bpr_loss(self, users, pos, neg):
         users_emb = self.user_embeddings(users)
-        pos_emb   = self.item_embeddings(pos))
+        pos_emb   = self.item_embeddings(pos)
         neg_emb   = self.item_embeddings(neg.long())
         pos_scores= torch.sum(users_emb*pos_emb, dim=1)
         neg_scores= torch.sum(users_emb*neg_emb, dim=1)

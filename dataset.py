@@ -51,7 +51,7 @@ def farfetch_train_test_normalization(train_df, test_df, attributes_df):
         'user_id', 'product_id', 'is_click'
     ]]
 
-    test_normalized_df = test_df[['user_id', 'product_id']].copy()
+    test_normalized_df = test_df[['user_id', 'product_id','query_id']].copy()
 
     def _f(x):
         if x in product_int_ids:

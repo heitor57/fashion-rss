@@ -28,12 +28,16 @@ class NNVF(ValueFunction):
     def train(self, dataset):
         print(dataset)
         self.loss_function.set_optimizer()
-        for i in tqdm(range(100)):
+        for _ in tqdm(range(2000)):
             sampled_dataset = sample_methods.sample_fixed_size(dataset, 2048)
             self.loss_function.compute(torch.tensor(sampled_dataset.iloc[:, 0].to_numpy()),
                                        torch.tensor(sampled_dataset.iloc[:, 1].to_numpy()),
                                        torch.tensor(sampled_dataset.iloc[:, 2].to_numpy()),
                                        )
-
-    def predict(self, targets):
-        raise NotImplementedError
+        
+    def predict(self, users, items):
+        users=torch.tensor(users)
+        items=torch.tensor(items)
+        return self.neural_network.forward(users,items)
+        pass
+        # raise NotImplementedError

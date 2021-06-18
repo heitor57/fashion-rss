@@ -1,4 +1,5 @@
 from torch import nn
+import numpy as np
 import torch
 class Recommender:
     def __init__(self, name, *args,
@@ -17,10 +18,13 @@ class NNRecommender(Recommender):
         super().__init__(*args, **kwargs)
         self.value_function = value_function
 
-    def recommend(self,target):
+    def recommend(self, users, items):
+        predict_value = self.value_function.predict(users,items)
+        idxs = np.argsort(predict_value.detach().numpy())
+        return users[idxs], items[idxs]
 
         # self.neural_network
-        raise NotImplementedError
+        # raise NotImplementedError
         # pass
 
     def train(self,dataset):

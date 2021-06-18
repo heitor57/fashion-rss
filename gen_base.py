@@ -21,6 +21,6 @@ dataset.parquet_save(
         dataset.parquet_load(file_name='data_phase1/train.parquet'),
         rate=constants.RATE,
         seed=constants.RANDOM_SEED),
-    f'data_phase1/train_{parameters_id}.parquet')
+    f'data_phase1/generated_datasets/train_{parameters_id}.parquet')
 # dataset.ParquetLoad(file_name='data_phase1/validation.parquet').process()
 # dataset.ParquetLoad(file_name='data_phase1/attributes.parquet').process()

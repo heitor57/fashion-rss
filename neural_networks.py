@@ -45,6 +45,8 @@ class BilinearNet(nn.Module):
 
         self.embedding_dim = embedding_dim
 
+        # self.loss_function.neural_network = self
+
         self.user_embeddings = ScaledEmbedding(num_users, embedding_dim,
                                                sparse=sparse)
         self.item_embeddings = ScaledEmbedding(num_items, embedding_dim,
@@ -68,8 +70,8 @@ class BilinearNet(nn.Module):
         return dot + user_bias + item_bias
 
     def bpr_loss(self, users, pos, neg):
-        users_emb = self.user_embeddings(users)
-        pos_emb   = self.item_embeddings(pos)
+        users_emb = self.user_embeddings(users.long())
+        pos_emb   = self.item_embeddings(pos.long())
         neg_emb   = self.item_embeddings(neg.long())
         pos_scores= torch.sum(users_emb*pos_emb, dim=1)
         neg_scores= torch.sum(users_emb*neg_emb, dim=1)

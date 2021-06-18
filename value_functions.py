@@ -28,7 +28,7 @@ class NNVF(ValueFunction):
     def train(self, dataset):
         print(dataset)
         self.loss_function.set_optimizer()
-        for _ in tqdm(range(2000)):
+        for _ in tqdm(range(30)):
             sampled_dataset = sample_methods.sample_fixed_size(dataset, 2048)
             self.loss_function.compute(torch.tensor(sampled_dataset.iloc[:, 0].to_numpy()),
                                        torch.tensor(sampled_dataset.iloc[:, 1].to_numpy()),

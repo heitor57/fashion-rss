@@ -45,7 +45,7 @@ for name, group in tqdm(test_normalized_df.groupby('user_id')):
     users, items = recommender.recommend(group['user_id'].to_numpy(),
                           group['product_id'].to_numpy())
     group = group.set_index('user_id')
-    for u, i, q in zip(users,items,group.loc[users]['query_id']):
+    for u, i, q in zip(users,items,group.loc[users[0]]['query_id'].to_numpy()):
         results.append([u, i, q])
     # recommender.recommend()
 

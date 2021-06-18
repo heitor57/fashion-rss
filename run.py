@@ -18,7 +18,7 @@ parameters_id = utils.parameters_to_str(parameters)
 
 train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids = dataset.farfetch_train_test_normalization(
     dataset.parquet_load(
-        file_name=f'data_phase1/data/train_{parameters_id}.parquet'),
+        file_name=f'data_phase1/train.parquet'),
     dataset.parquet_load(file_name='data_phase1/validation.parquet'),
     dataset.parquet_load(file_name='data_phase1/attributes.parquet'))
 
@@ -40,14 +40,20 @@ recommender = recommenders.NNRecommender(nnvf, name="NN")
 recommender.train(train_normalized_df)
 
 results = []
-
-for name, group in tqdm(test_normalized_df.groupby('user_id')):
+product_str_ids ={v: k for k,v in product_int_ids.items()}
+for name, group in tqdm(test_normalized_df.groupby('query_id')):
     users, items = recommender.recommend(group['user_id'].to_numpy(),
                           group['product_id'].to_numpy())
+    user_id = group['user_id'].iloc[0]
     group = group.set_index('user_id')
-    for u, i, q in zip(users,items,group.loc[users[0]]['query_id'].to_numpy()):
-        results.append([u, i, q])
+    query_id = group['query_id'].iloc[0]
+    j = 1
+    # print(items)
+    for i in items:
+        # print(i)
+        results.append([query_id,product_str_ids[i], j])
+        j +=1 
     # recommender.recommend()
 
-results_df = pd.DataFrame(results)
-results_df.to_csv('data_phase1/data/output.csv')
+results_df = pd.DataFrame(results,columns=['query_id','product_id','rank'])
+results_df.to_csv('data_phase1/data/output.csv',index=False)

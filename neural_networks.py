@@ -66,8 +66,8 @@ class BilinearNet(nn.Module):
         item_bias = self.item_biases(item_ids).view(-1, 1)
 
         dot = (user_embedding * item_embedding).sum(1)
-
-        return dot + user_bias + item_bias
+        
+        return dot.flatten() + user_bias.flatten() + item_bias.flatten()
 
     def bpr_loss(self, users, pos, neg):
         users_emb = self.user_embeddings(users.long())

@@ -60,6 +60,7 @@ def farfetch_train_test_normalization(train_df, test_df, attributes_df):
             return x
 
     attributes_df.product_id = attributes_df.product_id.map(_f)
+    train_normalized_df = train_normalized_df.loc[train_normalized_df['is_click']>0]
 
     return train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids
 

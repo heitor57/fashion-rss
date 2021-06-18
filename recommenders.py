@@ -20,7 +20,8 @@ class NNRecommender(Recommender):
 
     def recommend(self, users, items):
         predict_value = self.value_function.predict(users,items)
-        idxs = np.argsort(predict_value.detach().numpy())
+        idxs = np.argsort(predict_value.detach().numpy())[::-1]
+        # print(predict_value)
         return users[idxs], items[idxs]
 
         # self.neural_network

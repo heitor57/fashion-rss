@@ -1,3 +1,4 @@
+*.csr
 *.parquet
 *.csv
 *.zip

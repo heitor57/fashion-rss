@@ -1,4 +1,5 @@
 from utils import create_path_to_file
+import os.path
 import pandas as pd
 from tqdm import tqdm
 import numpy as np
@@ -63,7 +64,7 @@ def farfetch_train_test_normalization(train_df, test_df, attributes_df):
     return train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids
 
 
-def negative_samples( df, *args, **kwargs):
+def negative_samples( df):
     df = df.set_index('user_id')
     print(df)
     df['products_sampled'] = 0
@@ -75,7 +76,7 @@ def negative_samples( df, *args, **kwargs):
     for user_id in tqdm(df.index):
         user_df = df.loc[[user_id]]
         # print(user_df)
-        products_sample_space = products_id - users_products[user_id]
+        products_sample_space = np.array(list(products_id - users_products[user_id]))
         # i = random.randint(0,len(products_sample_space)-1)
         # user_df
 
@@ -84,7 +85,7 @@ def negative_samples( df, *args, **kwargs):
                                             replace=False)
         df.loc[user_id]['products_sampled'] = products_sampled
         # sampled_product_id = products_sample_space[i]
-    return df
+    return df.reset_index()
 
 
 def sample_df(df, rate, seed=0):

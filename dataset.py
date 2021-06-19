@@ -15,6 +15,8 @@ import numpy as np
 import os
 from copy import copy
 
+# class Dataset:
+
 
 def parquet_load(file_name):
     df = pd.read_parquet(file_name)
@@ -45,14 +47,14 @@ def farfetch_train_test_normalization(train_df, test_df, attributes_df):
     test_df.user_id = test_df.user_id.map(lambda x: user_int_ids[x])
     test_df.product_id = test_df.product_id.map(lambda x: product_int_ids[x])
 
-    train_normalized_df = train_df.groupby(['user_id', 'product_id'
-                                           ])['is_click'].sum().reset_index()
+    # train_normalized_df = train_df.groupby(['user_id', 'product_id'
+    # ])['is_click'].sum().reset_index()
 
-    train_normalized_df = train_normalized_df[[
-        'user_id', 'product_id', 'is_click'
-    ]]
+    # train_normalized_df = train_normalized_df[[
+    # 'user_id', 'product_id', 'is_click'
+    # ]]
 
-    test_normalized_df = test_df[['user_id', 'product_id', 'query_id']].copy()
+    # test_normalized_df = test_df[['user_id', 'product_id', 'query_id']].copy()
 
     def _f(x):
         if x in product_int_ids:
@@ -61,10 +63,21 @@ def farfetch_train_test_normalization(train_df, test_df, attributes_df):
             return x
 
     attributes_df.product_id = attributes_df.product_id.map(_f)
-    train_normalized_df = train_normalized_df.loc[
-        train_normalized_df['is_click'] > 0]
+    # train_normalized_df = train_df.loc[
+    # train_df['is_click'] > 0]
 
-    return train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids
+    return train_df, test_df, attributes_df, user_int_ids, product_int_ids
+
+
+def dataset_accumulate_clicks(df):
+    df = df.groupby(['user_id', 'product_id'])['is_click'].sum().reset_index()
+    return df
+
+
+
+def dataset_filter_zero_clicks(df):
+    df = df.loc[df['is_click'] > 0]
+    return df
 
 
 def negative_samples(df):

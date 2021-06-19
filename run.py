@@ -13,7 +13,12 @@ from tqdm import tqdm
 import time
 import dataset
 import utils
+import argparse
 
+argparser = argparse.ArgumentParser()
+argparser.add_argument('-m',type=str)
+args = argparser.parse_args()
+method = args.m
 dataset_parameters = {
     # 'rate': constants.RATE,
     # 'random_seed': constants.RANDOM_SEED,
@@ -33,14 +38,14 @@ train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_in
     dataset.parquet_load(file_name='data_phase1/attributes.parquet'))
 
 
-if os.path.isfile(negative_file_name):
-    train_normalized_df = dataset.parquet_load(negative_file_name)
-else:
-    train_normalized_df = dataset.negative_samples(train_normalized_df)
-    dataset.parquet_save(train_normalized_df, negative_file_name)
+# if os.path.isfile(negative_file_name):
+    # train_normalized_df = dataset.parquet_load(negative_file_name)
+# else:
+    # train_normalized_df = dataset.negative_samples(train_normalized_df)
+    # dataset.parquet_save(train_normalized_df, negative_file_name)
 
-method= "PopularityNet"
-method= "Random"
+# method= "PopularityNet"
+# method= "Random"
 
 num_users = len(user_int_ids)
 num_items = len(product_int_ids)
@@ -55,11 +60,17 @@ if method == 'ewqeq':
     # nn = neural_networks.PopularityNet(num_items)
     nnvf = value_functions.NNVF(nn, loss_function)
 
-    recommender = recommenders.NNRecommender(nnvf, name="NN")
+    recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
 elif method == 'Random':
     vf = value_functions.RandomVF()
-    recommender =recommenders.SimpleRecommender(vf)
+    recommender =recommenders.SimpleRecommender(vf,name=method)
+elif method == 'PopularityNet':
+    loss_function = loss_functions.BPRLoss(1e-4, 0.001)
+    nn = neural_networks.PopularityNet(num_items)
+    nnvf = value_functions.NNVF(nn, loss_function,num_batchs=2000,batch_size=2048)
+    recommender = recommenders.NNRecommender(nnvf, name=method)
+    recommender.train(train_normalized_df)
 
 results = []
 product_str_ids = {v: k for k, v in product_int_ids.items()}
@@ -70,7 +81,6 @@ for name, group in tqdm(test_normalized_df.groupby('query_id')):
     group = group.set_index('user_id')
     query_id = group['query_id'].iloc[0]
     j = 1
-    # print(items)
     for i in items:
         # print(i)
         results.append([query_id, product_str_ids[i], j])
@@ -78,4 +88,4 @@ for name, group in tqdm(test_normalized_df.groupby('query_id')):
     # recommender.recommend()
 
 results_df = pd.DataFrame(results, columns=['query_id', 'product_id', 'rank'])
-results_df.to_csv('data_phase1/data/output.csv', index=False)
+results_df.to_csv(f'data_phase1/data/{method}_output.csv', index=False)

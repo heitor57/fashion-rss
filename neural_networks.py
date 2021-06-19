@@ -178,7 +178,7 @@ class PopularityNet(nn.Module):
 
     def __init__(self, num_items, sparse=False):
         super().__init__()
-
+        self._num_items = num_items
         self.item_biases = ZeroEmbedding(num_items,
                                          1,
                                          sparse=sparse,
@@ -186,11 +186,11 @@ class PopularityNet(nn.Module):
 
     def forward(self,item_ids):
         target_bias = self.item_biases(item_ids)
-        return target_bias
+        return target_bias.flatten()
     def bpr_loss(self,users, pos, neg):
         pos_scores=self.forward(pos)
         neg_scores=self.forward(neg)
         loss = torch.mean(nn.functional.softplus(neg_scores - pos_scores))
-        reg_loss = (1 / 2) * (pos_scores.norm(2).pow(2) + neg_scores.norm(2).pow(2)) / float(len(users))
+        reg_loss = (1 / 2) * (pos_scores.norm(2).pow(2) + neg_scores.norm(2).pow(2)) / float(len(pos))
         return loss, reg_loss
 

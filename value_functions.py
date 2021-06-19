@@ -19,17 +19,19 @@ class ValueFunction:
 
 class NNVF(ValueFunction):
 
-    def __init__(self, neural_network, loss_function, *args, **kwargs):
+    def __init__(self, neural_network, loss_function, num_batchs=700,batch_size=2048, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.neural_network = neural_network
         self.loss_function = loss_function
         self.loss_function.neural_network = neural_network
+        self.num_batchs = num_batchs
+        self.batch_size = batch_size
         # self.loss_function.set_optimizer()
 
     def train(self, dataset):
         print(dataset)
         self.loss_function.set_optimizer()
-        t = tqdm(range(700))
+        t = tqdm(range(self.num_batchs))
         if isinstance(self.neural_network, (neural_networks.PoolNet)):
             users_consumed_items = dataset[[
                 'user_id', 'product_id'
@@ -37,15 +39,14 @@ class NNVF(ValueFunction):
             print(users_consumed_items)
         for _ in t:
             sampled_dataset = sample_methods.sample_fixed_size(
-                dataset, int(2048))
+                dataset, self.batch_size)
             # print(torch.tensor(sampled_dataset.iloc[:, 0].to_numpy())))
-            if isinstance(
-                    self.neural_network,
-                (neural_networks.BilinearNet)):
+            if isinstance(self.neural_network, (neural_networks.BilinearNet)):
                 loss = self.loss_function.compute(
                     torch.tensor(sampled_dataset['user_id'].to_numpy()),
                     torch.tensor(sampled_dataset['product_id'].to_numpy()),
-                    torch.tensor(sampled_dataset['products_sampled'].to_numpy()),
+                    torch.tensor(
+                        sampled_dataset['products_sampled'].to_numpy()),
                 )
             elif isinstance(self.neural_network, (neural_networks.PoolNet)):
                 items_sequences = [
@@ -61,11 +62,13 @@ class NNVF(ValueFunction):
                     loss += self.loss_function.compute(i, j, k)
                     count += 1
                 loss /= count
-            elif isinstance(self.neural_network, (neural_networks.PopularityNet)):
-                loss = self.loss_function.compute(
-                    torch.tensor(sampled_dataset.iloc[:, 1].to_numpy()),
-                    torch.tensor(sampled_dataset.iloc[:, 2].to_numpy()),
-                )
+            elif isinstance(self.neural_network,
+                            (neural_networks.PopularityNet)):
+                neg = torch.from_numpy(
+                    np.random.randint(0, self.neural_network._num_items,
+                                      len(sampled_dataset)))
+                loss = self.loss_function.compute(None,
+                    torch.tensor(sampled_dataset['product_id'].to_numpy()), neg)
 
             t.set_description(f'{loss}')
             t.refresh()
@@ -73,7 +76,10 @@ class NNVF(ValueFunction):
     def predict(self, users, items):
         users = torch.tensor(users)
         items = torch.tensor(items)
-        v = self.neural_network.forward(users, items)
+        if isinstance(self.neural_network,neural_networks.PopularityNet):
+            v = self.neural_network.forward(items)
+        else:
+            v = self.neural_network.forward(users, items)
         # print(v)
         return v
         # raise NotImplementedError
@@ -88,5 +94,5 @@ class RandomVF(ValueFunction):
         pass
 
     def predict(self, users, items):
-        v= np.random.random(len(users))
+        v = np.random.random(len(users))
         return v

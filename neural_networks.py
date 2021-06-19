@@ -184,6 +184,13 @@ class PopularityNet(nn.Module):
                                          sparse=sparse,
                                          padding_idx=0)
 
-    def forward(self, item_sequences, item_ids):
+    def forward(self,item_ids):
         target_bias = self.item_biases(item_ids)
         return target_bias
+    def bpr_loss(self,users, pos, neg):
+        pos_scores=self.forward(pos)
+        neg_scores=self.forward(neg)
+        loss = torch.mean(nn.functional.softplus(neg_scores - pos_scores))
+        reg_loss = (1 / 2) * (pos_scores.norm(2).pow(2) + neg_scores.norm(2).pow(2)) / float(len(users))
+        return loss, reg_loss
+

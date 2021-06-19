@@ -39,11 +39,13 @@ class NNVF(ValueFunction):
             sampled_dataset = sample_methods.sample_fixed_size(
                 dataset, int(2048))
             # print(torch.tensor(sampled_dataset.iloc[:, 0].to_numpy())))
-            if isinstance(self.neural_network, neural_networks.BilinearNet):
+            if isinstance(
+                    self.neural_network,
+                (neural_networks.BilinearNet)):
                 loss = self.loss_function.compute(
-                    torch.tensor(sampled_dataset.iloc[:, 0].to_numpy()),
-                    torch.tensor(sampled_dataset.iloc[:, 1].to_numpy()),
-                    torch.tensor(sampled_dataset.iloc[:, 2].to_numpy()),
+                    torch.tensor(sampled_dataset['user_id'].to_numpy()),
+                    torch.tensor(sampled_dataset['product_id'].to_numpy()),
+                    torch.tensor(sampled_dataset['products_sampled'].to_numpy()),
                 )
             elif isinstance(self.neural_network, (neural_networks.PoolNet)):
                 items_sequences = [
@@ -52,12 +54,18 @@ class NNVF(ValueFunction):
                 ]
                 loss = 0
                 count = 0
-                for i, j, k in zip(items_sequences,
-                                   torch.tensor(sampled_dataset['product_id'].to_numpy()),
-                                   torch.tensor(sampled_dataset['is_click'].to_numpy())):
+                for i, j, k in zip(
+                        items_sequences,
+                        torch.tensor(sampled_dataset['product_id'].to_numpy()),
+                        torch.tensor(sampled_dataset['is_click'].to_numpy())):
                     loss += self.loss_function.compute(i, j, k)
                     count += 1
                 loss /= count
+            elif isinstance(self.neural_network, (neural_networks.PopularityNet)):
+                loss = self.loss_function.compute(
+                    torch.tensor(sampled_dataset.iloc[:, 1].to_numpy()),
+                    torch.tensor(sampled_dataset.iloc[:, 2].to_numpy()),
+                )
 
             t.set_description(f'{loss}')
             t.refresh()
@@ -69,3 +77,16 @@ class NNVF(ValueFunction):
         # print(v)
         return v
         # raise NotImplementedError
+
+
+class RandomVF(ValueFunction):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def train(self, dataset):
+        pass
+
+    def predict(self, users, items):
+        v= np.random.random(len(users))
+        return v

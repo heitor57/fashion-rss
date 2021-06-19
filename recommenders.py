@@ -31,3 +31,17 @@ class NNRecommender(Recommender):
     def train(self,dataset):
         self.value_function.train(dataset)
         # raise NotImplementedError
+
+class SimpleRecommender(Recommender):
+    def __init__(self, value_function, *args,
+                 **kwargs):
+        super().__init__(*args, **kwargs)
+        self.value_function = value_function
+
+    def recommend(self, users, items):
+        predict_value = self.value_function.predict(users,items)
+        idxs = np.argsort(predict_value)[::-1]
+        return users[idxs], items[idxs]
+
+    def train(self,dataset):
+        self.value_function.train(dataset)

@@ -1,4 +1,5 @@
 import pandas as pd
+import joblib
 import torch
 import value_functions
 import os.path
@@ -13,8 +14,16 @@ import time
 import dataset
 import utils
 
-parameters = {'rate': constants.RATE, 'random_seed': constants.RANDOM_SEED}
-parameters_id = utils.parameters_to_str(parameters)
+dataset_parameters = {
+    # 'rate': constants.RATE,
+    # 'random_seed': constants.RANDOM_SEED,
+    'train_path_name': 'data_phase1/train.parquet',
+    'test_path_name': 'data_phase1/validation.parquet',
+    'attributes_path_name': 'data_phase1/attributes.parquet',
+}
+dataset_parameters_id = joblib.hash(dataset_parameters)
+negative_file_name = 'negative_samples_'+dataset_parameters_id
+# parameters_id = utils.parameters_to_str(parameters)
 
 train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids = dataset.farfetch_train_test_normalization(
     dataset.parquet_load(file_name=f'data_phase1/train.parquet'),
@@ -23,23 +32,34 @@ train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_in
     # dataset.parquet_load(file_name='data_phase1/data/test_one_split.parquet'),
     dataset.parquet_load(file_name='data_phase1/attributes.parquet'))
 
-if os.path.isfile(constants.negative_samples_file):
-    train_normalized_df = dataset.parquet_load(constants.negative_samples_file)
+
+if os.path.isfile(negative_file_name):
+    train_normalized_df = dataset.parquet_load(negative_file_name)
 else:
     train_normalized_df = dataset.negative_samples(train_normalized_df)
-    dataset.parquet_save(train_normalized_df, constants.negative_samples_file)
+    dataset.parquet_save(train_normalized_df, negative_file_name)
+
+method= "PopularityNet"
+method= "Random"
+
 num_users = len(user_int_ids)
 num_items = len(product_int_ids)
-loss_function = loss_functions.BPRLoss(1e-4, 0.001)
-# nn = neural_networks.BilinearNet(num_users,
-                                 # num_items,
-                                 # constants.EMBEDDING_DIM,
-                                 # sparse=False)
-nn = neural_networks.PoolNet(num_items,constants.EMBEDDING_DIM)
-nnvf = value_functions.NNVF(nn, loss_function)
+if method == 'ewqeq':
 
-recommender = recommenders.NNRecommender(nnvf, name="NN")
-recommender.train(train_normalized_df)
+    loss_function = loss_functions.BPRLoss(1e-4, 0.001)
+    nn = neural_networks.BilinearNet(num_users,
+                                     num_items,
+                                     constants.EMBEDDING_DIM,
+                                     sparse=False)
+    # nn = neural_networks.PoolNet(num_items,constants.EMBEDDING_DIM)
+    # nn = neural_networks.PopularityNet(num_items)
+    nnvf = value_functions.NNVF(nn, loss_function)
+
+    recommender = recommenders.NNRecommender(nnvf, name="NN")
+    recommender.train(train_normalized_df)
+elif method == 'Random':
+    vf = value_functions.RandomVF()
+    recommender =recommenders.SimpleRecommender(vf)
 
 results = []
 product_str_ids = {v: k for k, v in product_int_ids.items()}

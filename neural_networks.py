@@ -197,22 +197,36 @@ class PopularityNet(nn.Module):
 
 class ContextualPopularityNet(nn.Module):
 
-    def __init__(self, num_items, items_attributes, sparse=False):
+    def __init__(self, num_items, items_attributes,user_context_size, sparse=False):
         super().__init__()
         self._num_items = num_items
-        self.item_biases = ZeroEmbedding(num_items,
-                                         1,
-                                         sparse=sparse,
-                                         padding_idx=0)
+        # self.item_biases = ZeroEmbedding(num_items,
+                                         # 1,
+                                         # sparse=sparse,
+                                         # padding_idx=0)
         
-        pattern = '|'.join(['season','collection', 'category_id_l1', 'category_id_l2', 'category_id_l3', 'brand_id', 'season_year'])
-        columns = [c for c in items_attributes.columns if re.match(pattern,c)]
-        
-        self.items_attributes = torch.tensor(items_attributes[columns].to_numpy())
+        self.items_attributes = torch.tensor(items_attributes.to_numpy())
+        # input_size = self.context_size+len(items_attributes.columns)
+        # if hlayers == None:
+            # hlayers= 
+        item_context_size = len(items_attributes.columns)
+        input_size = user_context_size+item_context_size
+        hlayers= nn.Sequential(
+            nn.Linear(input_size, input_size//2),
+            nn.ReLU(),
+            nn.Linear(input_size//4, input_size//8),
+            nn.ReLU(),
+            nn.Linear(input_size//16, input_size//32),
+            nn.ReLU(),
+            nn.Linear(input_size//64, 1),
+            nn.ReLU()
+        )
+        self.hlayers = hlayers
 
-    def forward(self,users_contexts, item_ids):
-        target_bias = self.item_biases(item_ids)
-        return target_bias.flatten()
+
+    def forward(self, user_context, item_id):
+        # target_bias = self.item_biases(item_ids)
+        return self.hlayers(torch.cat(user_context,self.items_attributes[item_id]))
     def bpr_loss(self,users, pos, neg):
         pos_scores=self.forward(pos)
         neg_scores=self.forward(neg)

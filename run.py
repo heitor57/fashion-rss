@@ -1,4 +1,5 @@
 import pandas as pd
+import re
 import joblib
 import torch
 import value_functions
@@ -73,7 +74,11 @@ elif method == 'PopularityNet':
     recommender.train(train_normalized_df)
 elif method == 'ContextualPopularityNet':
     loss_function = loss_functions.BPRLoss(1e-4, 0.001)
-    nn = neural_networks.ContextualPopularityNet(num_items,attributes_df)
+    columns=['season','collection', 'category_id_l1', 'category_id_l2', 'category_id_l3', 'brand_id', 'season_year']
+    pattern = '|'.join(columns)
+    columns = [c for c in attributes_df.columns if re.match(pattern,c)]
+
+    nn = neural_networks.ContextualPopularityNet(num_items,attributes_df[columns],context_size=)
     nnvf = value_functions.NNVF(nn, loss_function,num_batchs=2000,batch_size=2048)
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)

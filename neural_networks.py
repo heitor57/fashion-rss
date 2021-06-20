@@ -197,7 +197,7 @@ class PopularityNet(nn.Module):
 
 class ContextualPopularityNet(nn.Module):
 
-    def __init__(self, num_items, items_attributes,user_context_size, sparse=False):
+    def __init__(self, num_items, items_attributes,users_columns, sparse=False):
         super().__init__()
         self._num_items = num_items
         # self.item_biases = ZeroEmbedding(num_items,
@@ -210,7 +210,9 @@ class ContextualPopularityNet(nn.Module):
         # if hlayers == None:
             # hlayers= 
         item_context_size = len(items_attributes.columns)
-        input_size = user_context_size+item_context_size
+        self.users_columns = users_columns
+        input_size = len(users_columns)+item_context_size
+        print('input_size',input_size)
         hlayers= nn.Sequential(
             nn.Linear(input_size, input_size//2),
             nn.ReLU(),
@@ -224,12 +226,24 @@ class ContextualPopularityNet(nn.Module):
         self.hlayers = hlayers
 
 
-    def forward(self, user_context, item_id):
+    def forward(self, users_context, items_id):
+        # print(users_context.shape)
+        # print(users_context[self.users_columns])
+        # print(users_context[self.users_columns].shape)
+        users_context= torch.tensor(users_context[self.users_columns].to_numpy(dtype=np.float32))
         # target_bias = self.item_biases(item_ids)
-        return self.hlayers(torch.cat(user_context,self.items_attributes[item_id]))
-    def bpr_loss(self,users, pos, neg):
-        pos_scores=self.forward(pos)
-        neg_scores=self.forward(neg)
+        # print(users_context.shape,self.items_attributes[items_id].shape)
+        # print(
+        t = torch.cat((users_context,self.items_attributes[items_id]),1)
+        # print(t)
+        # print(t.shape)
+        # print(t[0].shape)
+        # return self.hlayers(t[0])
+        return self.hlayers(t)
+    def bpr_loss(self,users_context, pos, neg):
+        # users_context= torch.tensor(users_context[self.users_columns].to_numpy())
+        pos_scores=self.forward(users_context,pos)
+        neg_scores=self.forward(users_context,neg)
         loss = torch.mean(nn.functional.softplus(neg_scores - pos_scores))
         reg_loss = (1 / 2) * (pos_scores.norm(2).pow(2) + neg_scores.norm(2).pow(2)) / float(len(pos))
         return loss, reg_loss

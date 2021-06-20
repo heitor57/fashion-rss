@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 import joblib
+from constants import dataset_parameters
 import torch
 import value_functions
 import os.path
@@ -17,36 +18,25 @@ import utils
 import argparse
 
 argparser = argparse.ArgumentParser()
-argparser.add_argument('-m',type=str)
+argparser.add_argument('-m', type=str)
 args = argparser.parse_args()
 method = args.m
-dataset_parameters = {
-    # 'rate': constants.RATE,
-    # 'random_seed': constants.RANDOM_SEED,
-    'train_path_name': 'data_phase1/train.parquet',
-    'test_path_name': 'data_phase1/validation.parquet',
-    'attributes_path_name': 'data_phase1/attributes.parquet',
-}
+
 dataset_parameters_id = joblib.hash(dataset_parameters)
-negative_file_name = 'negative_samples_'+dataset_parameters_id
+# negative_file_name = 'negative_samples_'+dataset_parameters_id
 # parameters_id = utils.parameters_to_str(parameters)
 
-train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids = dataset.farfetch_train_test_normalization(
-    dataset.parquet_load(file_name=f'data_phase1/train.parquet'),
-    # dataset.parquet_load(file_name=f'data_phase1/data/train_one_split.parquet'),
-    dataset.parquet_load(file_name='data_phase1/validation.parquet'),
-    # dataset.parquet_load(file_name='data_phase1/data/test_one_split.parquet'),
-    dataset.parquet_load(file_name='data_phase1/attributes.parquet'))
-
-
-# if os.path.isfile(negative_file_name):
-    # train_normalized_df = dataset.parquet_load(negative_file_name)
-# else:
-    # train_normalized_df = dataset.negative_samples(train_normalized_df)
-    # dataset.parquet_save(train_normalized_df, negative_file_name)
-
-# method= "PopularityNet"
-# method= "Random"
+# train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids = dataset.farfetch_train_test_normalization(
+# dataset.parquet_load(file_name=dataset_parameters['train_path_name']),
+# dataset.parquet_load(file_name=dataset_parameters['test_path_name']),
+# dataset.parquet_load(file_name=dataset_parameters['attributes_path_name']))
+train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids = (
+    dataset.parquet_load(file_name=dataset_parameters['train_path_name']),
+    dataset.parquet_load(file_name=dataset_parameters['test_path_name']),
+    dataset.parquet_load(file_name=dataset_parameters['attributes_path_name']),
+    dataset.pickle_load(file_name=dataset_parameters['user_int_ids']),
+    dataset.pickle_load(file_name=dataset_parameters['product_int_ids']))
+# print(train_normalized_df)
 
 num_users = len(user_int_ids)
 num_items = len(product_int_ids)
@@ -65,21 +55,40 @@ if method == 'ewqeq':
     recommender.train(train_normalized_df)
 elif method == 'Random':
     vf = value_functions.RandomVF()
-    recommender =recommenders.SimpleRecommender(vf,name=method)
+    recommender = recommenders.SimpleRecommender(vf, name=method)
 elif method == 'PopularityNet':
     loss_function = loss_functions.BPRLoss(1e-4, 0.001)
     nn = neural_networks.PopularityNet(num_items)
-    nnvf = value_functions.NNVF(nn, loss_function,num_batchs=2000,batch_size=2048)
+    nnvf = value_functions.NNVF(nn,
+                                loss_function,
+                                num_batchs=2000,
+                                batch_size=2048)
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
 elif method == 'ContextualPopularityNet':
     loss_function = loss_functions.BPRLoss(1e-4, 0.001)
-    columns=['season','collection', 'category_id_l1', 'category_id_l2', 'category_id_l3', 'brand_id', 'season_year']
-    pattern = '|'.join(columns)
-    columns = [c for c in attributes_df.columns if re.match(pattern,c)]
+    items_columns = [
+        'season', 'collection', 'category_id_l1', 'category_id_l2',
+        'category_id_l3', 'brand_id', 'season_year'
+    ]
+    pattern = '|'.join(items_columns)
+    items_columns = [c for c in attributes_df.columns if re.match(pattern, c)]
+    users_columns = [
+        'week', 'week_day', 'device_category', 'device_platform', 'user_tier',
+        'user_country'
+    ]
+    pattern = '|'.join(users_columns)
+    users_columns = [
+        c for c in train_normalized_df.columns if re.match(pattern, c)
+    ]
 
-    nn = neural_networks.ContextualPopularityNet(num_items,attributes_df[columns],context_size=)
-    nnvf = value_functions.NNVF(nn, loss_function,num_batchs=2000,batch_size=2048)
+    nn = neural_networks.ContextualPopularityNet(num_items,
+                                                 attributes_df[items_columns],
+                                                 users_columns)
+    nnvf = value_functions.NNVF(nn,
+                                loss_function,
+                                num_batchs=2000,
+                                batch_size=2048)
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
 

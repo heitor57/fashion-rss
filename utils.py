@@ -4,11 +4,13 @@ import json
 
 
 from pathlib import Path
+import os.path
 
 def create_path_to_file(file_name,until=-1):
     Path('/'.join(file_name.split('/')[:until])).mkdir(parents=True,
                                                     exist_ok=True)
-
+def file_exists(fname):
+    return os.path.isfile(fname) 
 
 def parameters_to_str(d):
     return json.dumps(d,separators=(',', ':'))

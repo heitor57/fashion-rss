@@ -30,6 +30,7 @@ class NNVF(ValueFunction):
 
     def train(self, dataset):
         print(dataset)
+        dataset = dataset.loc[dataset.is_click > 0]
         self.loss_function.set_optimizer()
         t = tqdm(range(self.num_batchs))
         if isinstance(self.neural_network, (neural_networks.PoolNet)):
@@ -69,17 +70,31 @@ class NNVF(ValueFunction):
                                       len(sampled_dataset)))
                 loss = self.loss_function.compute(None,
                     torch.tensor(sampled_dataset['product_id'].to_numpy()), neg)
+            elif isinstance(self.neural_network,
+                            (neural_networks.ContextualPopularityNet)):
+                # print(
+                neg = torch.from_numpy(
+                    np.random.randint(0, self.neural_network._num_items,
+                                      len(sampled_dataset)))
+                loss = self.loss_function.compute(sampled_dataset,
+                    torch.tensor(sampled_dataset['product_id'].to_numpy()), neg)
+                # sampled_dataset
+                # self.neural_network.
 
             t.set_description(f'{loss}')
             t.refresh()
 
-    def predict(self, users, items):
+    def predict(self, users, items, users_context=None):
         users = torch.tensor(users)
         items = torch.tensor(items)
         if isinstance(self.neural_network,neural_networks.PopularityNet):
             v = self.neural_network.forward(items)
+        elif isinstance(self.neural_network,
+                        (neural_networks.ContextualPopularityNet)):
+            v = self.neural_network.forward(users_context, items)
         else:
             v = self.neural_network.forward(users, items)
+
         # print(v)
         return v
         # raise NotImplementedError

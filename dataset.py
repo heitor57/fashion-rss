@@ -1,4 +1,5 @@
 from utils import create_path_to_file
+import pickle
 import constants
 import os.path
 import pandas as pd
@@ -67,31 +68,34 @@ def farfetch_train_test_normalization(train_df, test_df, attributes_df):
     attributes_df = attributes_df.sort_values('product_id')
     # train_normalized_df = train_df.loc[
     # train_df['is_click'] > 0]
-    columns_to_dummies = [
-        'week', 'week_day', 'device_category', 'device_platform', 'user_tier',
-        'user_country'
-    ]
-    for column in columns_to_dummies:
-        train_df = pd.concat(
-            [train_df,
-             pd.get_dummies(train_df[column], prefix=column)], axis=1)
-        del train_df[column]
-        test_df = pd.concat(
-            [test_df, pd.get_dummies(test_df[column], prefix=column)], axis=1)
-        del test_df[column]
-    columns_to_dummies = [
-        'season', 'collection', 'category_id_l1', 'category_id_l2',
-        'category_id_l3', 'brand_id', 'season_year'
-    ]
-    for column in columns_to_dummies:
-        attributes_df = pd.concat([
-            attributes_df,
-            pd.get_dummies(attributes_df[column], prefix=column)
-        ],
-                                  axis=1)
-        del attributes_df[column]
+    # columns_to_dummies = [
+        # 'week', 'week_day', 'device_category', 'device_platform', 'user_tier',
+        # 'user_country'
+    # ]
+        # test_df = pd.concat(
+            # [test_df, pd.get_dummies(test_df[column], prefix=column)], axis=1)
+        # del test_df[column]
+    # columns_to_dummies = [
+        # 'season', 'collection', 'category_id_l1', 'category_id_l2',
+        # 'category_id_l3', 'brand_id', 'season_year'
+    # ]
+    # for column in columns_to_dummies:
+        # attributes_df = pd.concat([
+            # attributes_df,
+            # pd.get_dummies(attributes_df[column], prefix=column)
+        # ],
+                                  # axis=1)
+        # del attributes_df[column]
     return train_df, test_df, attributes_df, user_int_ids, product_int_ids
 
+def create_dummies(df,columns):
+    tmp_df = df.copy()
+    for column in columns:
+        tmp_df = pd.concat(
+            [tmp_df,
+             pd.get_dummies(tmp_df[column], prefix=column)], axis=1)
+        del tmp_df[column]
+    return tmp_df
 
 def dataset_accumulate_clicks(df):
     df = df.groupby(['user_id', 'product_id'])['is_click'].sum().reset_index()
@@ -137,6 +141,11 @@ def parquet_save(df, file_name):
     create_path_to_file(file_name)
     df.to_parquet(open(file_name, 'wb'))
 
+def pickle_save(obj, file_name):
+    create_path_to_file(file_name)
+    pickle.dump(obj,open(file_name, 'wb'))
+def pickle_load(file_name):
+    return pickle.load(open(file_name, 'rb'))
 
 def one_split(df, train_rate):
     train_size = int(len(df) * train_rate)

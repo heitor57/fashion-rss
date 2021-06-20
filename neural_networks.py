@@ -239,6 +239,7 @@ class ContextualPopularityNet(nn.Module):
         # print(t.shape)
         # print(t[0].shape)
         # return self.hlayers(t[0])
+        print(t.shape)
         return self.hlayers(t)
     def bpr_loss(self,users_context, pos, neg):
         # users_context= torch.tensor(users_context[self.users_columns].to_numpy())

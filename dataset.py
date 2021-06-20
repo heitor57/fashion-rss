@@ -1,4 +1,6 @@
 from utils import create_path_to_file
+import sklearn.decomposition
+import sklearn.feature_selection
 import pickle
 import constants
 import os.path
@@ -177,3 +179,24 @@ def one_split(df, train_rate):
     print(train_df.shape)
     print(test_df.shape)
     return train_df, test_df
+
+def get_df_columns_with_pattern(df,pattern):
+    return [
+            c for c in df.columns if re.match(pattern, c)
+            ]
+def select_top_features(df,columns):
+    selectkbest = sklearn.feature_selection.SelectKBest(
+        sklearn.feature_selection.chi2, k=32)
+    selected_features_values = selectkbest.fit_transform(
+        df[columns], df.is_click)
+    selected_columns = [
+        v1 for v1, v2 in zip(columns, selectkbest.get_support()) if v2 == True
+    ]
+    # df = df.drop(items_columns, axis=1)
+    # df[selected_columns] = selected_features_values
+    return selected_columns
+
+def dimensionality_reduction(df):
+    decomposition = sklearn.decomposition.PCA(32)
+    result=decomposition.fit_transform(df)
+    return pd.DataFrame(result)

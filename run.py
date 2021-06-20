@@ -71,6 +71,12 @@ elif method == 'PopularityNet':
     nnvf = value_functions.NNVF(nn, loss_function,num_batchs=2000,batch_size=2048)
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
+elif method == 'ContextualPopularityNet':
+    loss_function = loss_functions.BPRLoss(1e-4, 0.001)
+    nn = neural_networks.ContextualPopularityNet(num_items,attributes_df)
+    nnvf = value_functions.NNVF(nn, loss_function,num_batchs=2000,batch_size=2048)
+    recommender = recommenders.NNRecommender(nnvf, name=method)
+    recommender.train(train_normalized_df)
 
 results = []
 product_str_ids = {v: k for k, v in product_int_ids.items()}

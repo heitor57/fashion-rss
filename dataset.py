@@ -33,10 +33,11 @@ def farfetch_train_test_normalization(train_df, test_df, attributes_df):
 
     user_ids = np.unique(
         np.hstack((train_df.user_id.unique(), test_df.user_id.unique())))
-    product_ids = np.unique(
-        np.hstack((train_df.product_id.unique(), test_df.product_id.unique())))
-    num_users = len(user_ids)
-    num_products = len(product_ids)
+    # product_ids = np.unique(
+        # np.hstack((train_df.product_id.unique(), test_df.product_id.unique())))
+    product_ids = attributes_df.product_id.unique()
+    # num_users = len(user_ids)
+    # num_products = len(product_ids)
 
     user_int_ids = integer_map(user_ids)
     product_int_ids = integer_map(product_ids)
@@ -65,7 +66,17 @@ def farfetch_train_test_normalization(train_df, test_df, attributes_df):
     attributes_df.product_id = attributes_df.product_id.map(_f)
     # train_normalized_df = train_df.loc[
     # train_df['is_click'] > 0]
-
+    columns_to_dummies =['week', 'week_day','device_category', 'device_platform', 'user_tier',
+       'user_country']
+    for column in columns_to_dummies:
+        train_df = pd.concat([train_df,pd.get_dummies(train_df[column],prefix=column)],axis=1)
+        del train_df[column]
+        test_df = pd.concat([test_df,pd.get_dummies(test_df[column],prefix=column)],axis=1)
+        del test_df[column]
+    columns_to_dummies =['season','collection', 'category_id_l1', 'category_id_l2', 'category_id_l3', 'brand_id', 'season_year']
+    for column in columns_to_dummies:
+        attributes_df = pd.concat([attributes_df,pd.get_dummies(attributes_df[column],prefix=column)],axis=1)
+        del attributes_df[column]
     return train_df, test_df, attributes_df, user_int_ids, product_int_ids
 
 

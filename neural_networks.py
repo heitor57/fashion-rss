@@ -1,4 +1,5 @@
 from torch import nn
+import re
 import numpy as np
 import torch
 
@@ -185,6 +186,31 @@ class PopularityNet(nn.Module):
                                          padding_idx=0)
 
     def forward(self,item_ids):
+        target_bias = self.item_biases(item_ids)
+        return target_bias.flatten()
+    def bpr_loss(self,users, pos, neg):
+        pos_scores=self.forward(pos)
+        neg_scores=self.forward(neg)
+        loss = torch.mean(nn.functional.softplus(neg_scores - pos_scores))
+        reg_loss = (1 / 2) * (pos_scores.norm(2).pow(2) + neg_scores.norm(2).pow(2)) / float(len(pos))
+        return loss, reg_loss
+
+class ContextualPopularityNet(nn.Module):
+
+    def __init__(self, num_items, items_attributes, sparse=False):
+        super().__init__()
+        self._num_items = num_items
+        self.item_biases = ZeroEmbedding(num_items,
+                                         1,
+                                         sparse=sparse,
+                                         padding_idx=0)
+        
+        pattern = '|'.join(['season','collection', 'category_id_l1', 'category_id_l2', 'category_id_l3', 'brand_id', 'season_year'])
+        columns = [c for c in items_attributes.columns if re.match(pattern,c)]
+        
+        self.items_attributes = torch.tensor(items_attributes[columns].to_numpy())
+
+    def forward(self,users_contexts, item_ids):
         target_bias = self.item_biases(item_ids)
         return target_bias.flatten()
     def bpr_loss(self,users, pos, neg):

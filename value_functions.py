@@ -43,11 +43,15 @@ class NNVF(ValueFunction):
                 dataset, self.batch_size)
             # print(torch.tensor(sampled_dataset.iloc[:, 0].to_numpy())))
             if isinstance(self.neural_network, (neural_networks.BilinearNet)):
+                neg = torch.from_numpy(
+                    np.random.randint(0, self.neural_network._num_items,
+                                      len(sampled_dataset)))
                 loss = self.loss_function.compute(
                     torch.tensor(sampled_dataset['user_id'].to_numpy()),
                     torch.tensor(sampled_dataset['product_id'].to_numpy()),
-                    torch.tensor(
-                        sampled_dataset['products_sampled'].to_numpy()),
+                    neg,
+                    # torch.tensor(
+                        # sampled_dataset['products_sampled'].to_numpy()),
                 )
             elif isinstance(self.neural_network, (neural_networks.PoolNet)):
                 items_sequences = [
@@ -110,4 +114,49 @@ class RandomVF(ValueFunction):
 
     def predict(self, users, items):
         v = np.random.random(len(users))
+        return v
+
+
+class NCFVF(ValueFunction):
+
+    def __init__(self, neural_network, optimizer, loss_function,epochs, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.neural_network = neural_network
+        self.loss_function = loss_function
+        self.optimizer = optimizer
+        self.epochs=  epochs
+        # self.loss_function.set_optimizer()
+
+    def train(self, dataset):
+        print(dataset)
+        # dataset = dataset.loc[dataset.is_click > 0]
+        dataset['is_click'].loc[dataset.is_click==0] = -1
+        dataset = dataset.groupby(['user_id','product_id'])['is_click'].sum().reset_index()
+        if dataset.is_click.min()<0:
+            dataset.is_click += np.abs(dataset.is_click.min())
+        print(dataset)
+        print(dataset.describe())
+        print(dataset.is_click.value_counts().sort_index())
+        # raise SystemExit
+
+        t = tqdm(range(self.epochs))
+        for _ in t:
+            sampled_dataset = sample_methods.sample_fixed_size(
+                dataset, len(dataset))
+            user_id = torch.tensor(sampled_dataset.user_id.to_numpy())
+            item_id = torch.tensor(sampled_dataset.product_id.to_numpy())
+            is_click = torch.tensor(sampled_dataset.is_click.to_numpy())
+            self.neural_network.zero_grad()
+            prediction = self.neural_network(user_id, item_id)
+            loss = self.loss_function(prediction, is_click)
+            loss.backward()
+            self.optimizer.step()
+
+            t.set_description(f'{loss}')
+            t.refresh()
+
+    def predict(self, users, items, users_context=None):
+        users = torch.tensor(users)
+        items = torch.tensor(items)
+        v = self.neural_network(users, items)
         return v

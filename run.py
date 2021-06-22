@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 import joblib
+from torch.optim import optimizer
 from constants import dataset_parameters
 import torch
 import value_functions
@@ -58,7 +59,7 @@ train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_in
 
 num_users = len(user_int_ids)
 num_items = len(product_int_ids)
-if method == 'ewqeq':
+if method == 'Bi':
 
     loss_function = loss_functions.BPRLoss(1e-4, 0.001)
     nn = neural_networks.BilinearNet(num_users,
@@ -71,8 +72,8 @@ if method == 'ewqeq':
 
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
-elif method == 'Random':
     vf = value_functions.RandomVF()
+elif method == 'Random':
     recommender = recommenders.SimpleRecommender(vf, name=method)
 elif method == 'PopularityNet':
     loss_function = loss_functions.BPRLoss(1e-4, 0.001)
@@ -88,16 +89,19 @@ elif method == 'ContextualPopularityNet':
     # loss_function = loss_functions.RegressionLoss()
     # items_columns = list(map(str,list(range(0,32))))
     # items_columns = [
-        # 'season', 'collection', 'category_id_l1', 'category_id_l2',
-        # 'category_id_l3', 'brand_id', 'season_year'
+    # 'season', 'collection', 'category_id_l1', 'category_id_l2',
+    # 'category_id_l3', 'brand_id', 'season_year'
     # ]
     items_columns = [
-        'season', 'collection','gender','category_id_l1', 'season_year'
+        'season', 'collection', 'gender', 'category_id_l1', 'season_year'
     ]
     pattern = '|'.join(items_columns)
     items_columns = [c for c in attributes_df.columns if re.match(pattern, c)]
     users_columns = [
-        'week', 'week_day', 'device_category', 'device_platform', 'user_tier',
+        'week',
+        'week_day',
+        # 'device_category', 'device_platform',
+        'user_tier',
         'user_country'
     ]
     pattern = '|'.join(users_columns)
@@ -114,6 +118,16 @@ elif method == 'ContextualPopularityNet':
                                 batch_size=2048)
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
+elif method == 'ncf':
+    nn = neural_networks.NCF(num_users, num_items, constants.EMBEDDING_DIM, 3,
+                             0.0, 'NeuMF-end')
+    nnvf = value_functions.NCFVF(neural_network=nn,
+                                 loss_function=torch.nn.BCEWithLogitsLoss(),
+                                 optimizer=torch.optim.Adam(nn.parameters(),
+                                                            lr=0.001),
+                                 epochs=20)
+    recommender = recommenders.NNRecommender(nnvf, name=method)
+    recommender.train(train_normalized_df)
 
 results = []
 product_str_ids = {v: k for k, v in product_int_ids.items()}
@@ -123,7 +137,8 @@ for name, group in tqdm(test_normalized_df.groupby('query_id')):
     # print(group['product_id'].to_numpy())
     if method == 'ContextualPopularityNet':
         users, items = recommender.recommend(group['user_id'].to_numpy(),
-                                             group['product_id'].to_numpy(), users_context=group[users_columns])
+                                             group['product_id'].to_numpy(),
+                                             users_context=group[users_columns])
     else:
         users, items = recommender.recommend(group['user_id'].to_numpy(),
                                              group['product_id'].to_numpy())

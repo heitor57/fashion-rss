@@ -8,6 +8,11 @@ import numpy as np
 from tqdm import tqdm
 import time
 import dataset
+dataset_parameters = {
+    'train_path_name': 'data_phase1/train.parquet',
+    'test_path_name': 'data_phase1/validation.parquet',
+    'attributes_path_name': 'data_phase1/attributes.parquet',
+}
 # rate = 0.1
 # dataset.parquet_save(f'data_phase1/train_{rate}.parquet')
 

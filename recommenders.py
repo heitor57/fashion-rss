@@ -18,10 +18,11 @@ class NNRecommender(Recommender):
         super().__init__(*args, **kwargs)
         self.value_function = value_function
 
-    def recommend(self, users, items):
-        predict_value = self.value_function.predict(users,items)
-        idxs = np.argsort(predict_value.detach().numpy())[::-1]
+    def recommend(self, users, items, users_context=None):
+        predict_value = self.value_function.predict(users,items,users_context=users_context)
+        idxs = np.argsort(predict_value.detach().numpy())[0][::-1]
         # print(predict_value)
+        # print(users,items)
         return users[idxs], items[idxs]
 
         # self.neural_network

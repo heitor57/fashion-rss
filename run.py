@@ -17,6 +17,20 @@ import dataset
 import utils
 import argparse
 
+dataset_parameters = {
+    # 'rate': constants.RATE,
+    # 'random_seed': constants.RANDOM_SEED,
+    # 'train_path_name': 'data_phase1/train.parquet',
+    # 'test_path_name': 'data_phase1/validation.parquet',
+    # 'attributes_path_name': 'data_phase1/attributes.parquet',
+    'train_path_name': 'data_phase1/data/dummies/train.parquet',
+    'test_path_name': 'data_phase1/data/dummies/test.parquet',
+    'attributes_path_name': 'data_phase1/data/dummies/attributes.parquet',
+    # 'train_path_name': 'data_phase1/data/train.parquet',
+    # 'test_path_name': 'data_phase1/data/test.parquet',
+    'user_int_ids': 'data_phase1/data/dummies/user_int_ids.pickle',
+    'product_int_ids': 'data_phase1/data/dummies/product_int_ids.pickle',
+}
 argparser = argparse.ArgumentParser()
 argparser.add_argument('-m', type=str)
 args = argparser.parse_args()
@@ -67,10 +81,11 @@ elif method == 'PopularityNet':
     recommender.train(train_normalized_df)
 elif method == 'ContextualPopularityNet':
     loss_function = loss_functions.BPRLoss(1e-4, 0.001)
-    items_columns = [
-        'season', 'collection', 'category_id_l1', 'category_id_l2',
-        'category_id_l3', 'brand_id', 'season_year'
-    ]
+    items_columns = list(map(str,list(range(0,32))))
+    # items_columns = [
+        # 'season', 'collection', 'category_id_l1', 'category_id_l2',
+        # 'category_id_l3', 'brand_id', 'season_year'
+    # ]
     pattern = '|'.join(items_columns)
     items_columns = [c for c in attributes_df.columns if re.match(pattern, c)]
     users_columns = [
@@ -87,7 +102,7 @@ elif method == 'ContextualPopularityNet':
                                                  users_columns)
     nnvf = value_functions.NNVF(nn,
                                 loss_function,
-                                num_batchs=2000,
+                                num_batchs=20000,
                                 batch_size=2048)
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
@@ -95,12 +110,18 @@ elif method == 'ContextualPopularityNet':
 results = []
 product_str_ids = {v: k for k, v in product_int_ids.items()}
 for name, group in tqdm(test_normalized_df.groupby('query_id')):
-    users, items = recommender.recommend(group['user_id'].to_numpy(),
-                                         group['product_id'].to_numpy())
+
+    if method == 'ContextualPopularityNet':
+        users, items = recommender.recommend(group['user_id'].to_numpy(),
+                                             group['product_id'].to_numpy(), users_context=group[users_columns])
+    else:
+        users, items = recommender.recommend(group['user_id'].to_numpy(),
+                                             group['product_id'].to_numpy())
     user_id = group['user_id'].iloc[0]
     group = group.set_index('user_id')
     query_id = group['query_id'].iloc[0]
     j = 1
+    # print(items)
     for i in items:
         # print(i)
         results.append([query_id, product_str_ids[i], j])

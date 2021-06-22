@@ -18,6 +18,11 @@ import dataset
 import utils
 import argparse
 from constants import dataset_parameters
+dataset_parameters = {
+    'train_path_name': 'data_phase1/data/train.parquet',
+    'test_path_name': 'data_phase1/data/test.parquet',
+    'attributes_path_name': 'data_phase1/attributes.parquet',
+}
 
 train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids = dataset.farfetch_train_test_normalization(
     # dataset.parquet_load(file_name=f'data_phase1/train.parquet'),
@@ -55,8 +60,7 @@ dataset.parquet_save(test_normalized_df,
                      'data_phase1/data/dummies/test.parquet')
 
 items_columns_to_dummies = [
-    'season', 'collection', 'category_id_l1', 'category_id_l2',
-    'category_id_l3', 'brand_id', 'season_year'
+    'season', 'collection', 'category_id_l1', 'brand_id', 'season_year'
 ]
 attributes_df = dataset.create_dummies(attributes_df, items_columns_to_dummies)
 # attributes_df = dataset.select_top_features(attributes_df,
@@ -64,11 +68,12 @@ attributes_df = dataset.create_dummies(attributes_df, items_columns_to_dummies)
 pattern = '|'.join(items_columns_to_dummies)
 items_columns = dataset.get_df_columns_with_pattern(attributes_df, pattern)
 
-attributes_df = pd.concat([attributes_df.drop(items_columns,axis=1),dataset.dimensionality_reduction(attributes_df[items_columns])],axis=1)
+attributes_df = pd.concat([attributes_df.drop(items_columns,axis=1),dataset.dimensionality_reduction(attributes_df[items_columns]).astype(np.float32)],axis=1)
 print(attributes_df)
-
+# print(attributes_df.dtype)
+attributes_df.columns= list(map(str,attributes_df.columns))
 dataset.parquet_save(attributes_df,
                      'data_phase1/data/dummies/attributes.parquet')
 
-dataset.pickle_save(user_int_ids, dataset_parameters['user_int_ids'])
-dataset.pickle_save(product_int_ids, dataset_parameters['product_int_ids'])
+dataset.pickle_save(user_int_ids, 'data_phase1/data/dummies/user_int_ids.pickle')
+dataset.pickle_save(product_int_ids, 'data_phase1/data/dummies/product_int_ids.pickle')

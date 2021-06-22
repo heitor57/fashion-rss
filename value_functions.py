@@ -84,7 +84,7 @@ class NNVF(ValueFunction):
             t.set_description(f'{loss}')
             t.refresh()
 
-    def predict(self, users, items, users_context=None):
+    def predict(self, users, items,users_context=None):
         users = torch.tensor(users)
         items = torch.tensor(items)
         if isinstance(self.neural_network,neural_networks.PopularityNet):

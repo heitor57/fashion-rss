@@ -143,9 +143,9 @@ class NCFVF(ValueFunction):
         for _ in t:
             sampled_dataset = sample_methods.sample_fixed_size(
                 dataset, len(dataset))
-            user_id = torch.tensor(sampled_dataset.user_id.to_numpy())
-            item_id = torch.tensor(sampled_dataset.product_id.to_numpy())
-            is_click = torch.tensor(sampled_dataset.is_click.to_numpy())
+            user_id = torch.tensor(sampled_dataset.user_id.to_numpy()).long()
+            item_id = torch.tensor(sampled_dataset.product_id.to_numpy()).long()
+            is_click = torch.tensor(sampled_dataset.is_click.to_numpy()).float()
             self.neural_network.zero_grad()
             prediction = self.neural_network(user_id, item_id)
             loss = self.loss_function(prediction, is_click)

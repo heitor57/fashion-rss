@@ -30,32 +30,27 @@ users_columns_to_dummies = [
     'week', 'week_day', 'device_category', 'device_platform', 'user_tier',
     'user_country'
 ]
-train_normalized_df = dataset.create_dummies(train_normalized_df,
-                                             users_columns_to_dummies)
+test_normalized_df['is_click'] = -53215
+train_test_df = dataset.create_dummies(pd.concat([train_normalized_df,test_normalized_df],axis=0),users_columns_to_dummies)
+test_normalized_df = train_test_df.loc[train_test_df['is_click'] == -53215].copy()
+train_normalized_df = train_test_df.loc[train_test_df['is_click'] != -53215].copy()
+del test_normalized_df['is_click']
+
+# train_normalized_df = dataset.create_dummies(train_normalized_df,
+                                             # users_columns_to_dummies)
 pattern = '|'.join(users_columns_to_dummies)
 columns = dataset.get_df_columns_with_pattern(train_normalized_df,
                                                     pattern)
 selected_columns = dataset.select_top_features(train_normalized_df,
                                                   columns)
-# columns_to_drop = list(set(columns)-set(selected_columns))
-# print(columns_to_drop[0])
-# print(columns_to_drop)
-# raise SystemError
 train_normalized_df = pd.concat([train_normalized_df.drop(columns, axis=1),train_normalized_df[selected_columns]],axis=1)
-# df[selected_columns] = selected_features_values
-# cfname = joblib.hash(users_columns_to_dummies,
-# dataset_parameters['train_path_name'])
-# if utils.file_exists(cfname):
-# train_normalized_df = dataset.parquet_load(cfname)
-# else:
 dataset.parquet_save(train_normalized_df,
                      'data_phase1/data/dummies/train.parquet')
 
-test_normalized_df = dataset.create_dummies(test_normalized_df,
-                                            users_columns_to_dummies)
-test_normalized_df = test_normalized_df.drop(list(set(columns)-set(selected_columns)), axis=1)
 # test_normalized_df = dataset.select_top_features(test_normalized_df,
                                                  # users_columns_to_dummies)
+
+test_normalized_df = pd.concat([test_normalized_df.drop(columns, axis=1),test_normalized_df[selected_columns]],axis=1)
 dataset.parquet_save(test_normalized_df,
                      'data_phase1/data/dummies/test.parquet')
 

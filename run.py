@@ -24,10 +24,10 @@ dataset_parameters = {
     # 'test_path_name': 'data_phase1/validation.parquet',
     # 'attributes_path_name': 'data_phase1/attributes.parquet',
     'train_path_name': 'data_phase1/data/dummies/train.parquet',
-    'test_path_name': 'data_phase1/data/dummies/test.parquet',
+    'test_path_name': 'data_phase1/data/dummies/validation.parquet',
     'attributes_path_name': 'data_phase1/data/dummies/attributes.parquet',
     # 'train_path_name': 'data_phase1/data/train.parquet',
-    # 'test_path_name': 'data_phase1/data/test.parquet',
+    # 'test_path_name': 'data_phase1/data/validation.parquet',
     'user_int_ids': 'data_phase1/data/dummies/user_int_ids.pickle',
     'product_int_ids': 'data_phase1/data/dummies/product_int_ids.pickle',
 }
@@ -50,6 +50,10 @@ train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_in
     dataset.parquet_load(file_name=dataset_parameters['attributes_path_name']),
     dataset.pickle_load(file_name=dataset_parameters['user_int_ids']),
     dataset.pickle_load(file_name=dataset_parameters['product_int_ids']))
+
+# print(test_normalized_df.groupby('user_id').count().mean())
+# raise SystemError
+
 # print(train_normalized_df)
 
 num_users = len(user_int_ids)
@@ -81,11 +85,15 @@ elif method == 'PopularityNet':
     recommender.train(train_normalized_df)
 elif method == 'ContextualPopularityNet':
     loss_function = loss_functions.BPRLoss(1e-4, 0.001)
-    items_columns = list(map(str,list(range(0,32))))
+    # loss_function = loss_functions.RegressionLoss()
+    # items_columns = list(map(str,list(range(0,32))))
     # items_columns = [
         # 'season', 'collection', 'category_id_l1', 'category_id_l2',
         # 'category_id_l3', 'brand_id', 'season_year'
     # ]
+    items_columns = [
+        'season', 'collection','gender','category_id_l1', 'season_year'
+    ]
     pattern = '|'.join(items_columns)
     items_columns = [c for c in attributes_df.columns if re.match(pattern, c)]
     users_columns = [
@@ -102,7 +110,7 @@ elif method == 'ContextualPopularityNet':
                                                  users_columns)
     nnvf = value_functions.NNVF(nn,
                                 loss_function,
-                                num_batchs=20000,
+                                num_batchs=9000,
                                 batch_size=2048)
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
@@ -111,6 +119,8 @@ results = []
 product_str_ids = {v: k for k, v in product_int_ids.items()}
 for name, group in tqdm(test_normalized_df.groupby('query_id')):
 
+    # print(group['user_id'].to_numpy())
+    # print(group['product_id'].to_numpy())
     if method == 'ContextualPopularityNet':
         users, items = recommender.recommend(group['user_id'].to_numpy(),
                                              group['product_id'].to_numpy(), users_context=group[users_columns])

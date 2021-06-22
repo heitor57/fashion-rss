@@ -19,9 +19,12 @@ class NNRecommender(Recommender):
         self.value_function = value_function
 
     def recommend(self, users, items, users_context=None):
+        # print(users,items)
         predict_value = self.value_function.predict(users,items,users_context=users_context)
-        idxs = np.argsort(predict_value.detach().numpy())[0][::-1]
+        idxs = np.argsort(predict_value.detach().numpy().flatten())[::-1]
         # print(predict_value)
+        # print(idxs)
+        # input()
         # print(users,items)
         return users[idxs], items[idxs]
 

@@ -19,8 +19,8 @@ import utils
 import argparse
 from constants import dataset_parameters
 dataset_parameters = {
-    'train_path_name': 'data_phase1/data/train.parquet',
-    'test_path_name': 'data_phase1/data/test.parquet',
+    'train_path_name': 'data_phase1/train.parquet',
+    'test_path_name': 'data_phase1/validation.parquet',
     'attributes_path_name': 'data_phase1/attributes.parquet',
 }
 
@@ -32,7 +32,9 @@ train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_in
     dataset.parquet_load(file_name=dataset_parameters['attributes_path_name']))
 
 users_columns_to_dummies = [
-    'week', 'week_day', 'device_category', 'device_platform', 'user_tier',
+    'week', 'week_day',
+    'device_category', 'device_platform',
+    'user_tier',
     'user_country'
 ]
 test_normalized_df['is_click'] = -53215
@@ -46,21 +48,21 @@ del test_normalized_df['is_click']
 pattern = '|'.join(users_columns_to_dummies)
 columns = dataset.get_df_columns_with_pattern(train_normalized_df,
                                                     pattern)
-selected_columns = dataset.select_top_features(train_normalized_df,
-                                                  columns)
-train_normalized_df = pd.concat([train_normalized_df.drop(columns, axis=1),train_normalized_df[selected_columns]],axis=1)
+# selected_columns = dataset.select_top_features(train_normalized_df,
+                                                  # columns)
+# train_normalized_df = pd.concat([train_normalized_df.drop(columns, axis=1),train_normalized_df[selected_columns]],axis=
 dataset.parquet_save(train_normalized_df,
                      'data_phase1/data/dummies/train.parquet')
 
 # test_normalized_df = dataset.select_top_features(test_normalized_df,
                                                  # users_columns_to_dummies)
 
-test_normalized_df = pd.concat([test_normalized_df.drop(columns, axis=1),test_normalized_df[selected_columns]],axis=1)
+# test_normalized_df = pd.concat([test_normalized_df.drop(columns, axis=1),test_normalized_df[selected_columns]],axis=1)
 dataset.parquet_save(test_normalized_df,
-                     'data_phase1/data/dummies/test.parquet')
+                     'data_phase1/data/dummies/validation.parquet')
 
 items_columns_to_dummies = [
-    'season', 'collection', 'category_id_l1', 'brand_id', 'season_year'
+    'season', 'collection','gender','category_id_l1', 'season_year'
 ]
 attributes_df = dataset.create_dummies(attributes_df, items_columns_to_dummies)
 # attributes_df = dataset.select_top_features(attributes_df,
@@ -68,7 +70,7 @@ attributes_df = dataset.create_dummies(attributes_df, items_columns_to_dummies)
 pattern = '|'.join(items_columns_to_dummies)
 items_columns = dataset.get_df_columns_with_pattern(attributes_df, pattern)
 
-attributes_df = pd.concat([attributes_df.drop(items_columns,axis=1),dataset.dimensionality_reduction(attributes_df[items_columns]).astype(np.float32)],axis=1)
+# attributes_df = pd.concat([attributes_df.drop(items_columns,axis=1),dataset.dimensionality_reduction(attributes_df[items_columns]).astype(np.float32)],axis=1)
 print(attributes_df)
 # print(attributes_df.dtype)
 attributes_df.columns= list(map(str,attributes_df.columns))

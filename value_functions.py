@@ -132,19 +132,21 @@ class NCFVF(ValueFunction):
         # dataset = dataset.loc[dataset.is_click > 0]
         dataset['is_click'].loc[dataset.is_click==0] = -1
         dataset = dataset.groupby(['user_id','product_id'])['is_click'].sum().reset_index()
-        if dataset.is_click.min()<0:
-            dataset.is_click += np.abs(dataset.is_click.min())
-        print(dataset)
-        print(dataset.describe())
-        print(dataset.is_click.value_counts().sort_index())
+        dataset['is_click'].loc[dataset.is_click>0] = 1
+        dataset['is_click'].loc[dataset.is_click<=0] = 0
+        # if dataset.is_click.min()<0:
+            # dataset.is_click += np.abs(dataset.is_click.min())
+        # print(dataset)
+        # print(dataset.describe())
+        # print(dataset.is_click.value_counts().sort_index())
         # raise SystemExit
 
         t = tqdm(range(self.epochs))
         for _ in t:
             sampled_dataset = sample_methods.sample_fixed_size(
                 dataset, len(dataset))
-            user_id = torch.tensor(sampled_dataset.user_id.to_numpy()).long()
-            item_id = torch.tensor(sampled_dataset.product_id.to_numpy()).long()
+            user_id = torch.tensor(sampled_dataset.user_id.to_numpy()).int()
+            item_id = torch.tensor(sampled_dataset.product_id.to_numpy()).int()
             is_click = torch.tensor(sampled_dataset.is_click.to_numpy()).float()
             self.neural_network.zero_grad()
             prediction = self.neural_network(user_id, item_id)

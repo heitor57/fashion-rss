@@ -125,7 +125,7 @@ elif method == 'ncf':
                                  loss_function=torch.nn.BCEWithLogitsLoss(),
                                  optimizer=torch.optim.Adam(nn.parameters(),
                                                             lr=0.001),
-                                 epochs=20)
+                                 epochs=100)
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
 

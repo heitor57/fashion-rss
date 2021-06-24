@@ -216,12 +216,13 @@ class ContextualPopularityNet(nn.Module):
         hlayers= nn.Sequential(
             nn.Linear(input_size, input_size//2),
             nn.ReLU(),
-            nn.Linear(input_size//2, input_size//4),
+            # nn.Linear(input_size//2, input_size//4),
+            nn.Linear(input_size//2, 1),
             nn.ReLU(),
-            nn.Linear(input_size//4, input_size//8),
-            nn.ReLU(),
-            nn.Linear(input_size//8, 1),
-            nn.ReLU()
+            # nn.Linear(input_size//4, input_size//8),
+            # nn.ReLU(),
+            # nn.Linear(input_size//8, 1),
+            # nn.ReLU()
         )
         self.hlayers = hlayers
 

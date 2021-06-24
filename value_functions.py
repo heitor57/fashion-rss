@@ -1,4 +1,7 @@
 import torch
+import scipy.sparse.linalg
+import sklearn.decomposition
+import scipy.sparse
 import numpy as np
 import neural_networks
 from tqdm import tqdm
@@ -162,3 +165,50 @@ class NCFVF(ValueFunction):
         items = torch.tensor(items)
         v = self.neural_network(users, items)
         return v
+
+class PopularVF(ValueFunction):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def train(self, dataset):
+        
+        self.items_popularity = np.zeros(len(dataset['items_attributes']))
+        for user_id, product_id in dataset['train'].groupby(['user_id','product_id']).count().reset_index()[['user_id','product_id']].iterrows():
+            # print(row['product_id'])
+            self.items_popularity[product_id] +=1
+        pass
+
+    def predict(self, users, items):
+        return self.items_popularity[items]
+        # v = np.random.random(len(users))
+        # return v
+
+class SVDVF(ValueFunction):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def train(self, dataset):
+        train= dataset['train']
+        train['is_click'].loc[train.is_click==0] = -1
+        train = train.groupby(['user_id','product_id'])['is_click'].sum().reset_index()
+        train['is_click'].loc[train.is_click>0] = 1
+        train['is_click'].loc[train.is_click<=0] = 0
+        spm = scipy.sparse.csr_matrix((train.is_click,(train.user_id,train.product_id)),shape=(dataset['num_users'], dataset['num_items']),dtype=float)
+        # model=sklearn.decomposition.NMF(n_components=10)
+        # model.fit_transform(spm)
+        u, s, vt = scipy.sparse.linalg.svds(spm,k=16)
+        self.U = u
+        self.V = vt.T
+
+        # NMF(n_components=50, init='random', random_state=0, verbose=True)
+        pass
+
+    def predict(self, users, items):
+        values = np.empty(len(users))
+        j = 0
+        for u, i in zip(users,items):
+            values[j] = self.U[u] @ self.V[i]
+            j+=1
+        return values

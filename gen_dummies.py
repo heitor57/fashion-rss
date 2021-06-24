@@ -33,9 +33,9 @@ train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_in
 
 users_columns_to_dummies = [
     'week', 'week_day',
-    # 'device_category', 'device_platform',
+    'device_category', 'device_platform',
     'user_tier',
-    'user_country'
+    # 'user_country'
 ]
 test_normalized_df['is_click'] = -53215
 train_test_df = dataset.create_dummies(pd.concat([train_normalized_df,test_normalized_df],axis=0),users_columns_to_dummies)

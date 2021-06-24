@@ -59,7 +59,7 @@ train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_in
 
 num_users = len(user_int_ids)
 num_items = len(product_int_ids)
-if method == 'Bi':
+if method == 'bi':
 
     loss_function = loss_functions.BPRLoss(1e-4, 0.001)
     nn = neural_networks.BilinearNet(num_users,
@@ -72,10 +72,25 @@ if method == 'Bi':
 
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
+elif method == 'random':
     vf = value_functions.RandomVF()
-elif method == 'Random':
     recommender = recommenders.SimpleRecommender(vf, name=method)
-elif method == 'PopularityNet':
+elif method == 'svd':
+    vf = value_functions.SVDVF()
+    recommender = recommenders.SimpleRecommender(vf, name=method)
+    recommender.train({
+        'train':train_normalized_df,
+        'num_users':num_users,
+        'num_items':num_items,
+        })
+elif method == 'popular':
+    vf = value_functions.PopularVF()
+    recommender = recommenders.SimpleRecommender(vf, name=method)
+    recommender.train({
+        'train': train_normalized_df,
+        'items_attributes': attributes_df,
+        })
+elif method == 'popularitynet':
     loss_function = loss_functions.BPRLoss(1e-4, 0.001)
     nn = neural_networks.PopularityNet(num_items)
     nnvf = value_functions.NNVF(nn,
@@ -84,7 +99,7 @@ elif method == 'PopularityNet':
                                 batch_size=2048)
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
-elif method == 'ContextualPopularityNet':
+elif method == 'contextualpopularitynet':
     loss_function = loss_functions.BPRLoss(1e-4, 0.001)
     # loss_function = loss_functions.RegressionLoss()
     # items_columns = list(map(str,list(range(0,32))))
@@ -100,15 +115,15 @@ elif method == 'ContextualPopularityNet':
     users_columns = [
         'week',
         'week_day',
-        # 'device_category', 'device_platform',
+        'device_category',
+        'device_platform',
         'user_tier',
-        'user_country'
+        # 'user_country'
     ]
     pattern = '|'.join(users_columns)
     users_columns = [
         c for c in train_normalized_df.columns if re.match(pattern, c)
     ]
-
     nn = neural_networks.ContextualPopularityNet(num_items,
                                                  attributes_df[items_columns],
                                                  users_columns)
@@ -135,7 +150,7 @@ for name, group in tqdm(test_normalized_df.groupby('query_id')):
 
     # print(group['user_id'].to_numpy())
     # print(group['product_id'].to_numpy())
-    if method == 'ContextualPopularityNet':
+    if method == 'contextualpopularitynet':
         users, items = recommender.recommend(group['user_id'].to_numpy(),
                                              group['product_id'].to_numpy(),
                                              users_context=group[users_columns])

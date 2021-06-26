@@ -6,6 +6,7 @@ import numpy as np
 import neural_networks
 from tqdm import tqdm
 
+import pickle
 
 class ValueFunction:
 
@@ -211,3 +212,47 @@ class SVDVF(ValueFunction):
             values[j] = self.U[u] @ self.V[i]
             j+=1
         return values
+
+class Coverage(ValueFunction):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
+    def train(self, dataset):
+        train= dataset['train']
+        train = train.groupby(['user_id','product_id'])['is_click'].sum().reset_index()
+
+        spm = scipy.sparse.csr_matrix((train.is_click,(train.user_id,train.product_id)),shape=(dataset['num_users'], dataset['num_items']),dtype=float)
+
+        # list_items = [i for i in tqdm(range(spm.shape[1]), position=0, leave=True) if spm[:,i].count_nonzero() >= 1]
+        # list_users = [u for u in tqdm(range(spm.shape[0]), position=0, leave=True) if spm[u,:].count_nonzero() >= 1]
+
+        list_items = pickle.load(open("data_phase1/coverage_list_items.pk", "rb"))
+        list_users = pickle.load(open("data_phase1/coverage_list_users.pk", "rb"))
+
+        # pickle.dump(list_items, open("coverage_list_items.pk", "wb"))
+        # pickle.dump(list_users, open("coverage_list_users.pk", "wb"))
+
+        # dict_nonzero = {i: set(spm[:,i].nonzero()[0]) for i in tqdm(list_items, position=0, leave=True)}
+
+        # pickle.dump(dict_nonzero, open("coverage_dict_nonzero.pk", "wb"))
+        dict_nonzero = pickle.load(open("data_phase1/coverage_dict_nonzero.pk", "rb"))
+
+        # coverage = [(i, len(dict_nonzero[i].intersection(set(list_users)))) for i in tqdm(list_items, position=0, leave=True)]
+        # coverage.sort(key=lambda x: x[1], reverse=True)
+        # self.coverage = dict(coverage)
+
+        # pickle.dump(self.coverage, open("data_phase1/coverage.pk", "wb"))
+        self.coverage = pickle.load(open("data_phase1/coverage.pk", "rb"))
+
+    def predict(self, users, items):
+        result = []
+        for item in items:
+            if item in self.coverage:
+                result.append(item)
+            else:
+                result.append(-99999)
+
+        # return [self.coverage[item] for item in items] 
+        return result 

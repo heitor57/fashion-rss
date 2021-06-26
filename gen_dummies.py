@@ -20,7 +20,7 @@ import argparse
 from constants import settings
 settings = {
     'train_path_name': 'data_phase1/data/train.parquet',
-    'test_path_name': 'data_phase1/data/validation.parquet',
+    'validation_path_name': 'data_phase1/data/validation.parquet',
     'attributes_path_name': 'data_phase1/attributes.parquet',
 }
 
@@ -28,7 +28,7 @@ train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_in
     # dataset.parquet_load(file_name=f'data_phase1/train.parquet'),
     dataset.parquet_load(file_name=settings['train_path_name']),
     # dataset.parquet_load(file_name='data_phase1/validation.parquet'),
-    dataset.parquet_load(file_name=settings['test_path_name']),
+    dataset.parquet_load(file_name=settings['validation_path_name']),
     dataset.parquet_load(file_name=settings['attributes_path_name']))
 
 users_columns_to_dummies = [

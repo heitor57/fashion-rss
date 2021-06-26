@@ -78,33 +78,34 @@ def farfetch_train_test_normalization(train_df, test_df, attributes_df):
     # train_normalized_df = train_df.loc[
     # train_df['is_click'] > 0]
     # columns_to_dummies = [
-        # 'week', 'week_day', 'device_category', 'device_platform', 'user_tier',
-        # 'user_country'
+    # 'week', 'week_day', 'device_category', 'device_platform', 'user_tier',
+    # 'user_country'
     # ]
-        # test_df = pd.concat(
-            # [test_df, pd.get_dummies(test_df[column], prefix=column)], axis=1)
-        # del test_df[column]
+    # test_df = pd.concat(
+    # [test_df, pd.get_dummies(test_df[column], prefix=column)], axis=1)
+    # del test_df[column]
     # columns_to_dummies = [
-        # 'season', 'collection', 'category_id_l1', 'category_id_l2',
-        # 'category_id_l3', 'brand_id', 'season_year'
+    # 'season', 'collection', 'category_id_l1', 'category_id_l2',
+    # 'category_id_l3', 'brand_id', 'season_year'
     # ]
     # for column in columns_to_dummies:
-        # attributes_df = pd.concat([
-            # attributes_df,
-            # pd.get_dummies(attributes_df[column], prefix=column)
-        # ],
-                                  # axis=1)
-        # del attributes_df[column]
+    # attributes_df = pd.concat([
+    # attributes_df,
+    # pd.get_dummies(attributes_df[column], prefix=column)
+    # ],
+    # axis=1)
+    # del attributes_df[column]
     return train_df, test_df, attributes_df, user_int_ids, product_int_ids, query_int_ids
 
-def create_dummies(df,columns):
+
+def create_dummies(df, columns):
     tmp_df = df.copy()
     for column in columns:
         tmp_df = pd.concat(
-            [tmp_df,
-             pd.get_dummies(tmp_df[column], prefix=column)], axis=1)
+            [tmp_df, pd.get_dummies(tmp_df[column], prefix=column)], axis=1)
         del tmp_df[column]
     return tmp_df
+
 
 def dataset_accumulate_clicks(df):
     df = df.groupby(['user_id', 'product_id'])['is_click'].sum().reset_index()
@@ -150,11 +151,15 @@ def parquet_save(df, file_name):
     create_path_to_file(file_name)
     df.to_parquet(open(file_name, 'wb'))
 
+
 def pickle_save(obj, file_name):
     create_path_to_file(file_name)
-    pickle.dump(obj,open(file_name, 'wb'))
+    pickle.dump(obj, open(file_name, 'wb'))
+
+
 def pickle_load(file_name):
     return pickle.load(open(file_name, 'rb'))
+
 
 def one_split(df, train_rate):
     train_size = int(len(df) * train_rate)
@@ -187,11 +192,12 @@ def one_split(df, train_rate):
     print(test_df.shape)
     return train_df, test_df
 
-def get_df_columns_with_pattern(df,pattern):
-    return [
-            c for c in df.columns if re.match(pattern, c)
-            ]
-def select_top_features(df,columns):
+
+def get_df_columns_with_pattern(df, pattern):
+    return [c for c in df.columns if re.match(pattern, c)]
+
+
+def select_top_features(df, columns):
     selectkbest = sklearn.feature_selection.SelectKBest(
         sklearn.feature_selection.chi2, k=32)
     selected_features_values = selectkbest.fit_transform(
@@ -203,10 +209,74 @@ def select_top_features(df,columns):
     # df[selected_columns] = selected_features_values
     return selected_columns
 
+
 def dimensionality_reduction(df):
     decomposition = sklearn.decomposition.PCA(32)
-    result=decomposition.fit_transform(df)
+    result = decomposition.fit_transform(df)
     return pd.DataFrame(result)
 
+
 def sample_fixed_size(df, num_samples):
-    return df.sample(num_samples, random_state = constants.RANDOM_SEED)
+    return df.sample(num_samples, random_state=constants.RANDOM_SEED)
+
+
+# class Dataset:
+# def __init__(self,train_path, validation_path, attributes_path) -> None:
+# self.train_path = train_path
+
+# self.validation_path = validation_path
+# self.attributes_path = attributes_path
+# pass
+
+# class SplitDataset:
+# def __init__(self,train_path, validation_path, attributes_path) -> None:
+# self.train_path = train_path
+
+
+# self.validation_path = validation_path
+# self.attributes_path = attributes_path
+# pass
+def dataset_settings_factory(name, parameters=None):
+    if name == 'farfetch':
+        return {
+            'train_path_name': 'data_phase1/train.parquet',
+            'validation_path_name': 'data_phase1/validation.parquet',
+            'attributes_path_name': 'data_phase1/attributes.parquet'
+        }
+    elif name == 'farfetchdummies':
+        return {
+            'train_path_name':
+                'data_phase1/data/dummies/train.parquet',
+            'validation_path_name':
+                'data_phase1/data/dummies/validation.parquet',
+            'attributes_path_name':
+                'data_phase1/data/dummies/attributes.parquet',
+            'user_int_ids':
+                'data_phase1/data/dummies/user_int_ids.pickle',
+            'product_int_ids':
+                'data_phase1/data/dummies/product_int_ids.pickle',
+            'query_int_ids':
+                'data_phase1/data/dummies/query_int_ids.pickle',
+        }
+    elif name == 'split':
+        return {
+            'train_path_name':
+                'data_phase1/data/{}_{}_{}_train.parquet'.format(
+                    name, parameters['base_name'], parameters['train_size']),
+            'validation_path_name':  # 'data_phase1/data/dummies/validation.parquet',
+                'data_phase1/data/{}_{}_{}_validation.parquet'.format(
+                    name, parameters['base_name'], parameters['train_size']),
+            'attributes_path_name':  # 'data_phase1/data/dummies/attributes.parquet',
+                'data_phase1/data/{}_{}_{}_attributes.parquet'.format(
+                    name, parameters['base_name'], parameters['train_size']),
+            'user_int_ids':
+                'data_phase1/data/{}_{}_{}_user_int_ids.parquet'.format(
+                    name, parameters['base_name'], parameters['train_size']),
+            'product_int_ids':
+                'data_phase1/data/{}_{}_{}_product_int_ids.parquet'.format(
+                    name, parameters['base_name'], parameters['train_size']),
+            'query_int_ids':
+                'data_phase1/data/{}_{}_{}_query_int_ids.parquet'.format(
+                    name, parameters['base_name'], parameters['train_size']),
+        }
+    return {}

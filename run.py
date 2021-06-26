@@ -30,11 +30,11 @@ dataset_parameters_id = joblib.hash(settings)
 
 # train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids = dataset.farfetch_train_test_normalization(
 # dataset.parquet_load(file_name=dataset_parameters['train_path_name']),
-# dataset.parquet_load(file_name=dataset_parameters['test_path_name']),
+# dataset.parquet_load(file_name=dataset_parameters['validation_path_name']),
 # dataset.parquet_load(file_name=dataset_parameters['attributes_path_name']))
 train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids, query_int_ids = (
     dataset.parquet_load(file_name=settings['train_path_name']),
-    dataset.parquet_load(file_name=settings['test_path_name']),
+    dataset.parquet_load(file_name=settings['validation_path_name']),
     dataset.parquet_load(file_name=settings['attributes_path_name']),
     dataset.pickle_load(file_name=settings['user_int_ids']),
     dataset.pickle_load(file_name=settings['product_int_ids']),

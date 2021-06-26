@@ -24,13 +24,13 @@ settings = {
     # 'rate': constants.RATE,
     # 'random_seed': constants.RANDOM_SEED,
     # 'train_path_name': 'data_phase1/train.parquet',
-    # 'test_path_name': 'data_phase1/validation.parquet',
+    # 'validation_path_name': 'data_phase1/validation.parquet',
     # 'attributes_path_name': 'data_phase1/attributes.parquet',
     'train_path_name': 'data_phase1/data/dummies/train.parquet',
-    'test_path_name': 'data_phase1/data/dummies/validation.parquet',
+    'validation_path_name': 'data_phase1/data/dummies/validation.parquet',
     'attributes_path_name': 'data_phase1/data/dummies/attributes.parquet',
     # 'train_path_name': 'data_phase1/data/train.parquet',
-    # 'test_path_name': 'data_phase1/data/validation.parquet',
+    # 'validation_path_name': 'data_phase1/data/validation.parquet',
     'user_int_ids': 'data_phase1/data/dummies/user_int_ids.pickle',
     'product_int_ids': 'data_phase1/data/dummies/product_int_ids.pickle',
     'query_int_ids': 'data_phase1/data/dummies/query_int_ids.pickle',
@@ -45,11 +45,11 @@ method = args.m
 
 # train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids = dataset.farfetch_train_test_normalization(
 # dataset.parquet_load(file_name=dataset_parameters['train_path_name']),
-# dataset.parquet_load(file_name=dataset_parameters['test_path_name']),
+# dataset.parquet_load(file_name=dataset_parameters['validation_path_name']),
 # dataset.parquet_load(file_name=dataset_parameters['attributes_path_name']))
 train_df, validation_df, attributes_df, user_int_ids, product_int_ids, query_int_ids = (
     dataset.parquet_load(file_name=settings['train_path_name']),
-    dataset.parquet_load(file_name=settings['test_path_name']),
+    dataset.parquet_load(file_name=settings['validation_path_name']),
     dataset.parquet_load(file_name=settings['attributes_path_name']),
     dataset.pickle_load(file_name=settings['user_int_ids']),
     dataset.pickle_load(file_name=settings['product_int_ids']),

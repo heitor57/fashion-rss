@@ -10,7 +10,7 @@ import time
 import dataset
 dataset_parameters = {
     'train_path_name': 'data_phase1/train.parquet',
-    'test_path_name': 'data_phase1/validation.parquet',
+    'validation_path_name': 'data_phase1/validation.parquet',
     'attributes_path_name': 'data_phase1/attributes.parquet',
 }
 # rate = 0.1

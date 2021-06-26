@@ -144,6 +144,15 @@ elif method == 'ncf':
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
 
+elif method == 'coverage':
+    vf = value_functions.Coverage()
+    recommender = recommenders.SimpleRecommender(vf, name=method)
+    recommender.train({
+        'train':train_normalized_df,
+        'num_users':num_users,
+        'num_items':num_items,
+        })
+
 results = []
 product_str_ids = {v: k for k, v in product_int_ids.items()}
 for name, group in tqdm(test_normalized_df.groupby('query_id')):

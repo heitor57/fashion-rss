@@ -45,11 +45,18 @@ def farfetch_train_test_normalization(train_df, test_df, attributes_df):
     user_int_ids = integer_map(user_ids)
     product_int_ids = integer_map(product_ids)
 
+    query_ids = np.unique(
+        np.hstack((train_df.query_id.unique(), test_df.query_id.unique())))
+
+    query_int_ids = integer_map(query_ids)
+
     train_df.user_id = train_df.user_id.map(lambda x: user_int_ids[x])
     train_df.product_id = train_df.product_id.map(lambda x: product_int_ids[x])
+    train_df.query_id = train_df.query_id.map(lambda x: query_int_ids[x])
 
     test_df.user_id = test_df.user_id.map(lambda x: user_int_ids[x])
     test_df.product_id = test_df.product_id.map(lambda x: product_int_ids[x])
+    test_df.query_id = test_df.query_id.map(lambda x: query_int_ids[x])
 
     # train_normalized_df = train_df.groupby(['user_id', 'product_id'
     # ])['is_click'].sum().reset_index()
@@ -88,7 +95,7 @@ def farfetch_train_test_normalization(train_df, test_df, attributes_df):
         # ],
                                   # axis=1)
         # del attributes_df[column]
-    return train_df, test_df, attributes_df, user_int_ids, product_int_ids
+    return train_df, test_df, attributes_df, user_int_ids, product_int_ids, query_int_ids
 
 def create_dummies(df,columns):
     tmp_df = df.copy()

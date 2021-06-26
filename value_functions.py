@@ -5,7 +5,6 @@ import scipy.sparse
 import numpy as np
 import neural_networks
 from tqdm import tqdm
-import sample_methods
 
 
 class ValueFunction:
@@ -174,9 +173,9 @@ class PopularVF(ValueFunction):
     def train(self, dataset):
         
         self.items_popularity = np.zeros(len(dataset['items_attributes']))
-        for user_id, product_id in dataset['train'].groupby(['user_id','product_id']).count().reset_index()[['user_id','product_id']].iterrows():
+        for user_id, product_id in tqdm(dataset['train'].groupby(['user_id','product_id']).count().reset_index()[['user_id','product_id']].iterrows()):
             # print(row['product_id'])
-            self.items_popularity[product_id] +=1
+            self.items_popularity[product_id['product_id']] +=1
         pass
 
     def predict(self, users, items):

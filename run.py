@@ -2,7 +2,7 @@ import pandas as pd
 import re
 import joblib
 from torch.optim import optimizer
-from constants import dataset_parameters
+from constants import settings
 import torch
 import value_functions
 import os.path
@@ -17,27 +17,14 @@ import time
 import dataset
 import utils
 import argparse
+from constants import settings
 
-dataset_parameters = {
-    # 'rate': constants.RATE,
-    # 'random_seed': constants.RANDOM_SEED,
-    # 'train_path_name': 'data_phase1/train.parquet',
-    # 'test_path_name': 'data_phase1/validation.parquet',
-    # 'attributes_path_name': 'data_phase1/attributes.parquet',
-    'train_path_name': 'data_phase1/data/dummies/train.parquet',
-    'test_path_name': 'data_phase1/data/dummies/validation.parquet',
-    'attributes_path_name': 'data_phase1/data/dummies/attributes.parquet',
-    # 'train_path_name': 'data_phase1/data/train.parquet',
-    # 'test_path_name': 'data_phase1/data/validation.parquet',
-    'user_int_ids': 'data_phase1/data/dummies/user_int_ids.pickle',
-    'product_int_ids': 'data_phase1/data/dummies/product_int_ids.pickle',
-}
 argparser = argparse.ArgumentParser()
 argparser.add_argument('-m', type=str)
 args = argparser.parse_args()
 method = args.m
 
-dataset_parameters_id = joblib.hash(dataset_parameters)
+dataset_parameters_id = joblib.hash(settings)
 # negative_file_name = 'negative_samples_'+dataset_parameters_id
 # parameters_id = utils.parameters_to_str(parameters)
 
@@ -45,12 +32,14 @@ dataset_parameters_id = joblib.hash(dataset_parameters)
 # dataset.parquet_load(file_name=dataset_parameters['train_path_name']),
 # dataset.parquet_load(file_name=dataset_parameters['test_path_name']),
 # dataset.parquet_load(file_name=dataset_parameters['attributes_path_name']))
-train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids = (
-    dataset.parquet_load(file_name=dataset_parameters['train_path_name']),
-    dataset.parquet_load(file_name=dataset_parameters['test_path_name']),
-    dataset.parquet_load(file_name=dataset_parameters['attributes_path_name']),
-    dataset.pickle_load(file_name=dataset_parameters['user_int_ids']),
-    dataset.pickle_load(file_name=dataset_parameters['product_int_ids']))
+train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids, query_int_ids = (
+    dataset.parquet_load(file_name=settings['train_path_name']),
+    dataset.parquet_load(file_name=settings['test_path_name']),
+    dataset.parquet_load(file_name=settings['attributes_path_name']),
+    dataset.pickle_load(file_name=settings['user_int_ids']),
+    dataset.pickle_load(file_name=settings['product_int_ids']),
+    dataset.pickle_load(file_name=settings['query_int_ids']),
+    )
 
 # print(test_normalized_df.groupby('user_id').count().mean())
 # raise SystemError
@@ -146,6 +135,7 @@ elif method == 'ncf':
 
 results = []
 product_str_ids = {v: k for k, v in product_int_ids.items()}
+query_str_ids = {v: k for k, v in query_int_ids.items()}
 for name, group in tqdm(test_normalized_df.groupby('query_id')):
 
     # print(group['user_id'].to_numpy())
@@ -164,7 +154,7 @@ for name, group in tqdm(test_normalized_df.groupby('query_id')):
     # print(items)
     for i in items:
         # print(i)
-        results.append([query_id, product_str_ids[i], j])
+        results.append([query_str_ids[query_id], product_str_ids[i], j])
         j += 1
     # recommender.recommend()
 

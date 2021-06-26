@@ -9,7 +9,7 @@ RANDOM_SEED = 1
 
 EMBEDDING_DIM = 10
 
-dataset_parameters = {
+settings = {
     # 'rate': constants.RATE,
     # 'random_seed': constants.RANDOM_SEED,
     # 'train_path_name': 'data_phase1/train.parquet',
@@ -22,4 +22,5 @@ dataset_parameters = {
     # 'test_path_name': 'data_phase1/data/validation.parquet',
     'user_int_ids': 'data_phase1/data/dummies/user_int_ids.pickle',
     'product_int_ids': 'data_phase1/data/dummies/product_int_ids.pickle',
+    'query_int_ids': 'data_phase1/data/dummies/query_int_ids.pickle',
 }

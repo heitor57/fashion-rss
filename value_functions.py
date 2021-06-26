@@ -1,3 +1,5 @@
+from scipy.sparse import data
+import dataset
 import torch
 import scipy.sparse.linalg
 import sklearn.decomposition
@@ -13,7 +15,7 @@ class ValueFunction:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def train(self, dataset):
+    def train(self, dataset_):
         raise NotImplementedError
 
     def predict(self, targets):
@@ -31,19 +33,19 @@ class NNVF(ValueFunction):
         self.batch_size = batch_size
         # self.loss_function.set_optimizer()
 
-    def train(self, dataset):
-        print(dataset)
-        dataset = dataset.loc[dataset.is_click > 0]
+    def train(self, dataset_):
+        print(dataset_)
+        dataset_ = dataset_.loc[dataset_.is_click > 0]
         self.loss_function.set_optimizer()
         t = tqdm(range(self.num_batchs))
         if isinstance(self.neural_network, (neural_networks.PoolNet)):
-            users_consumed_items = dataset[[
+            users_consumed_items = dataset_[[
                 'user_id', 'product_id'
             ]].groupby('user_id').agg(lambda x: torch.tensor(np.array(list(x))))
             print(users_consumed_items)
         for _ in t:
-            sampled_dataset = sample_methods.sample_fixed_size(
-                dataset, self.batch_size)
+            sampled_dataset_ = dataset.sample_fixed_size(
+                dataset_, self.batch_size)
             # print(torch.tensor(sampled_dataset.iloc[:, 0].to_numpy())))
             if isinstance(self.neural_network, (neural_networks.BilinearNet)):
                 neg = torch.from_numpy(
@@ -112,7 +114,7 @@ class RandomVF(ValueFunction):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def train(self, dataset):
+    def train(self, dataset_):
         pass
 
     def predict(self, users, items):
@@ -130,24 +132,24 @@ class NCFVF(ValueFunction):
         self.epochs=  epochs
         # self.loss_function.set_optimizer()
 
-    def train(self, dataset):
-        print(dataset)
-        # dataset = dataset.loc[dataset.is_click > 0]
-        dataset['is_click'].loc[dataset.is_click==0] = -1
-        dataset = dataset.groupby(['user_id','product_id'])['is_click'].sum().reset_index()
-        dataset['is_click'].loc[dataset.is_click>0] = 1
-        dataset['is_click'].loc[dataset.is_click<=0] = 0
-        # if dataset.is_click.min()<0:
-            # dataset.is_click += np.abs(dataset.is_click.min())
-        # print(dataset)
-        # print(dataset.describe())
-        # print(dataset.is_click.value_counts().sort_index())
+    def train(self, dataset_):
+        print(dataset_)
+        # dataset = dataset_.loc[dataset_.is_click > 0]
+        dataset_['is_click'].loc[dataset_.is_click==0] = -1
+        dataset_ = dataset_.groupby(['user_id','product_id'])['is_click'].sum().reset_index()
+        dataset_['is_click'].loc[dataset_.is_click>0] = 1
+        dataset_['is_click'].loc[dataset_.is_click<=0] = 0
+        # if dataset_.is_click.min()<0:
+            # dataset_.is_click += np.abs(dataset_.is_click.min())
+        # print(dataset_)
+        # print(dataset_.describe())
+        # print(dataset_.is_click.value_counts().sort_index())
         # raise SystemExit
 
         t = tqdm(range(self.epochs))
         for _ in t:
-            sampled_dataset = sample_methods.sample_fixed_size(
-                dataset, len(dataset))
+            sampled_dataset = dataset.sample_fixed_size(
+                dataset_, len(dataset_))
             user_id = torch.tensor(sampled_dataset.user_id.to_numpy()).int()
             item_id = torch.tensor(sampled_dataset.product_id.to_numpy()).int()
             is_click = torch.tensor(sampled_dataset.is_click.to_numpy()).float()
@@ -171,10 +173,10 @@ class PopularVF(ValueFunction):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def train(self, dataset):
+    def train(self, dataset_):
         
-        self.items_popularity = np.zeros(len(dataset['items_attributes']))
-        for user_id, product_id in tqdm(dataset['train'].groupby(['user_id','product_id']).count().reset_index()[['user_id','product_id']].iterrows()):
+        self.items_popularity = np.zeros(len(dataset_['items_attributes']))
+        for user_id, product_id in tqdm(dataset_['train'].groupby(['user_id','product_id']).count().reset_index()[['user_id','product_id']].iterrows()):
             # print(row['product_id'])
             self.items_popularity[product_id['product_id']] +=1
         pass
@@ -189,13 +191,13 @@ class SVDVF(ValueFunction):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def train(self, dataset):
-        train= dataset['train']
+    def train(self, dataset_):
+        train= dataset_['train']
         train['is_click'].loc[train.is_click==0] = -1
         train = train.groupby(['user_id','product_id'])['is_click'].sum().reset_index()
         train['is_click'].loc[train.is_click>0] = 1
         train['is_click'].loc[train.is_click<=0] = 0
-        spm = scipy.sparse.csr_matrix((train.is_click,(train.user_id,train.product_id)),shape=(dataset['num_users'], dataset['num_items']),dtype=float)
+        spm = scipy.sparse.csr_matrix((train.is_click,(train.user_id,train.product_id)),shape=(dataset_['num_users'], dataset_['num_items']),dtype=float)
         # model=sklearn.decomposition.NMF(n_components=10)
         # model.fit_transform(spm)
         u, s, vt = scipy.sparse.linalg.svds(spm,k=16)
@@ -219,11 +221,11 @@ class Coverage(ValueFunction):
         super().__init__(*args, **kwargs)
 
 
-    def train(self, dataset):
-        train= dataset['train']
+    def train(self, dataset_):
+        train= dataset_['train']
         train = train.groupby(['user_id','product_id'])['is_click'].sum().reset_index()
 
-        spm = scipy.sparse.csr_matrix((train.is_click,(train.user_id,train.product_id)),shape=(dataset['num_users'], dataset['num_items']),dtype=float)
+        spm = scipy.sparse.csr_matrix((train.is_click,(train.user_id,train.product_id)),shape=(dataset_['num_users'], dataset_['num_items']),dtype=float)
 
         # list_items = [i for i in tqdm(range(spm.shape[1]), position=0, leave=True) if spm[:,i].count_nonzero() >= 1]
         # list_users = [u for u in tqdm(range(spm.shape[0]), position=0, leave=True) if spm[u,:].count_nonzero() >= 1]

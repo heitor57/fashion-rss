@@ -128,8 +128,8 @@ elif method == 'ncf':
     nnvf = value_functions.NCFVF(neural_network=nn,
                                  loss_function=torch.nn.BCEWithLogitsLoss(),
                                  optimizer=torch.optim.Adam(nn.parameters(),
-                                                            lr=0.001),
-                                 epochs=100)
+                                                            lr=0.0001),
+                                 epochs=20)
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
 

@@ -207,3 +207,6 @@ def dimensionality_reduction(df):
     decomposition = sklearn.decomposition.PCA(32)
     result=decomposition.fit_transform(df)
     return pd.DataFrame(result)
+
+def sample_fixed_size(df, num_samples):
+    return df.sample(num_samples, random_state = constants.RANDOM_SEED)

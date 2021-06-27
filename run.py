@@ -2,7 +2,6 @@ import pandas as pd
 import re
 import joblib
 from torch.optim import optimizer
-from constants import source_dataset_settings
 import torch
 import value_functions
 import os.path
@@ -17,28 +16,27 @@ import time
 import dataset
 import utils
 import argparse
-from constants import source_dataset_settings
+
+
+dataset_1_parameters= {'farfetch':{}}
+# dataset_output_name= 'split'
+dataset_input_parameters = {'split':{'base': dataset_1_parameters,'train_size':0.8 }}
+dataset_input_parameters = {'dummies':{'base': dataset_input_parameters}}
+dataset_input_settings = dataset.dataset_settings_factory(dataset_input_parameters)
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument('-m', type=str)
 args = argparser.parse_args()
 method = args.m
 
-dataset_parameters_id = joblib.hash(source_dataset_settings)
-# negative_file_name = 'negative_samples_'+dataset_parameters_id
-# parameters_id = utils.parameters_to_str(parameters)
 
-# train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids = dataset.farfetch_train_test_normalization(
-# dataset.parquet_load(file_name=dataset_parameters['train_path']),
-# dataset.parquet_load(file_name=dataset_parameters['validation_path']),
-# dataset.parquet_load(file_name=dataset_parameters['attributes_path']))
 train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids, query_int_ids = (
-    dataset.parquet_load(file_name=source_dataset_settings['train_path']),
-    dataset.parquet_load(file_name=source_dataset_settings['validation_path']),
-    dataset.parquet_load(file_name=source_dataset_settings['attributes_path']),
-    dataset.pickle_load(file_name=source_dataset_settings['user_int_ids']),
-    dataset.pickle_load(file_name=source_dataset_settings['product_int_ids']),
-    dataset.pickle_load(file_name=source_dataset_settings['query_int_ids']),
+    dataset.parquet_load(file_name=dataset_input_settings['train_path']),
+    dataset.parquet_load(file_name=dataset_input_settings['validation_path']),
+    dataset.parquet_load(file_name=dataset_input_settings['attributes_path']),
+    dataset.pickle_load(file_name=dataset_input_settings['user_int_ids']),
+    dataset.pickle_load(file_name=dataset_input_settings['product_int_ids']),
+    dataset.pickle_load(file_name=dataset_input_settings['query_int_ids']),
     )
 
 # print(test_normalized_df.groupby('user_id').count().mean())
@@ -168,4 +166,4 @@ for name, group in tqdm(test_normalized_df.groupby('query_id')):
     # recommender.recommend()
 
 results_df = pd.DataFrame(results, columns=['query_id', 'product_id', 'rank'])
-results_df.to_csv(f'data_phase1/data/{method}_output.csv', index=False)
+results_df.to_csv(f'data_phase1/data/{dataset.get_dataset_id(dataset_input_parameters)}_{method}_output.csv', index=False)

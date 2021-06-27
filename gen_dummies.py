@@ -18,17 +18,15 @@ import dataset
 import utils
 import argparse
 
-dataset_input_name= 'farfetch'
-dataset_input_parameters= {}
-dataset_output_name= 'split'
-dataset_output_parameters = {'base': {dataset_input_name:dataset_input_parameters},'train_size':0.8 }
-dataset_input_name = dataset_output_name
-dataset_input_parameters = dataset_output_parameters
-dataset_input_settings = dataset.dataset_settings_factory(dataset_input_name,dataset_input_parameters)
+# dataset_input_name= 
+dataset_1_parameters= {'farfetch':{}}
+# dataset_output_name= 'split'
+dataset_input_parameters = {'split':{'base': dataset_1_parameters,'train_size':0.8 }}
+# dataset_input_parameters = dataset_output_parameters
+dataset_input_settings = dataset.dataset_settings_factory(dataset_input_parameters)
 
-dataset_output_name= 'dummies'
-dataset_output_parameters = {'base': {dataset_input_name:dataset_input_parameters}}
-dataset_output_settings = dataset.dataset_settings_factory(dataset_output_name,dataset_output_parameters)
+dataset_output_parameters = {'dummies':{'base': dataset_input_parameters}}
+dataset_output_settings = dataset.dataset_settings_factory(dataset_output_parameters)
 
 
 train_df, test_df, attributes_df, user_int_ids, product_int_ids, query_int_ids = dataset.farfetch_train_test_normalization(

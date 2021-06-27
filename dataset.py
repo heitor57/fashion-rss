@@ -237,15 +237,18 @@ def sample_fixed_size(df, num_samples):
 # self.validation_path = validation_path
 # self.attributes_path = attributes_path
 # pass
-def get_dataset_id(name,parameters):
-    return '{%s:'%name+json.dumps(parameters, separators=(',', ':'))+'}'
+# def get_dataset_id(name,parameters):
+    # return '{%s:'%name+json.dumps(parameters, separators=(',', ':'))+'}'
 
+def get_dataset_id(parameters):
+    return json.dumps(parameters, separators=(',', ':'))
 
-def dataset_settings_factory(name,parameters):
-    # name = list(parameters.keys())[0]
-    # pv = list(parameters.values())[0]
+# def dataset_settings_factory(name,parameters):
+def dataset_settings_factory(parameters):
+    name = list(parameters.keys())[0]
+    pv = list(parameters.values())[0]
     pv = parameters
-    dataset_id = get_dataset_id(name,parameters)
+    dataset_id = get_dataset_id(parameters)
     if name == 'farfetch':
         return {
             'train_path': 'data_phase1/train.parquet',

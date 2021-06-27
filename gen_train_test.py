@@ -36,5 +36,6 @@ train_df, validation_df = dataset.one_split(
 
 # out_dataset_settings = dataset.dataset_settings_factory('split',{'train_size': train_size, 'base_name': args.sb})
 
+# print(train_df,validation_df)
 dataset.parquet_save(train_df, dataset_output_settings['train_path'])
 dataset.parquet_save(validation_df, dataset_output_settings['validation_path'])

@@ -44,11 +44,20 @@ users_columns_to_dummies = [
 ]
 test_df['is_test'] = 1
 train_df['is_test'] = 0
+
+# print(train_df)
+# print(test_df)
 train_test_df = dataset.create_dummies(pd.concat([train_df,test_df],axis=0),users_columns_to_dummies)
-test_df = train_test_df.loc[train_test_df['is_test'] == 0].copy()
-train_df = train_test_df.loc[train_test_df['is_test'] != 1].copy()
+# print(train_test_df)
+# print(train_test_df.is_test.sum())
+# print(train_test_df.is_test.sum())
+test_df = train_test_df.loc[train_test_df['is_test'] == 1].copy()
+train_df = train_test_df.loc[train_test_df['is_test'] == 0].copy()
 
 del test_df['is_test'], train_df['is_test']
+
+print(train_df)
+print(test_df)
 # del test_normalized_df['is_click']
 
 # train_normalized_df = dataset.create_dummies(train_normalized_df,

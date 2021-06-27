@@ -360,8 +360,7 @@ class NCF(nn.Module):
 		prediction = self.predict_layer(concat)
 		return prediction.view(-1)
 
-def
-class LightGCN(BasicModel):
+class LightGCN():
     def __init__(self,latent_dim_rec,lightGCN_n_layers,keep_prob,A_split,pretrain,user_emb,item_emb,dropout):
         super().__init__()
         self.latent_dim_rec = latent_dim_rec

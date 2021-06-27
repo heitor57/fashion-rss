@@ -283,6 +283,26 @@ def dataset_settings_factory(parameters):
             'product_int_ids':None,
             'query_int_ids':None,
         }
+    elif name == 'qrec':
+        return {
+            'train_path':
+                'data_phase1/data/{}_train.csv'.format(dataset_id),
+            'validation_path':  # 'data_phase1/data/dummies/validation.parquet',
+                'data_phase1/data/{}_validation.csv'.format(
+                    dataset_id),
+            'attributes_path':  # 'data_phase1/data/dummies/attributes.parquet',
+                'data_phase1/data/{}_attributes.parquet'.format(
+                    dataset_id),
+            'user_int_ids':
+                'data_phase1/data/{}_user_int_ids.parquet'.format(
+                    dataset_id),
+            'product_int_ids':
+                'data_phase1/data/{}_product_int_ids.parquet'.format(
+                    dataset_id),
+            'query_int_ids':
+                'data_phase1/data/{}_query_int_ids.parquet'.format(
+                    dataset_id),
+        }
     else:
         return {
             'train_path':

@@ -17,18 +17,22 @@ import dataset
 import utils
 import argparse
 
-
-dataset_1_parameters= {'farfetch':{}}
+dataset_1_parameters = {'farfetch': {}}
 # dataset_output_name= 'split'
-dataset_input_parameters = {'split':{'base': dataset_1_parameters,'train_size':0.8 }}
-dataset_input_parameters = {'dummies':{'base': dataset_input_parameters}}
-dataset_input_settings = dataset.dataset_settings_factory(dataset_input_parameters)
+dataset_input_parameters = {
+    'split': {
+        'base': dataset_1_parameters,
+        'train_size': 0.8
+    }
+}
+dataset_input_parameters = {'dummies': {'base': dataset_input_parameters}}
+dataset_input_settings = dataset.dataset_settings_factory(
+    dataset_input_parameters)
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument('-m', type=str)
 args = argparser.parse_args()
 method = args.m
-
 
 train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids, query_int_ids = (
     dataset.parquet_load(file_name=dataset_input_settings['train_path']),
@@ -37,7 +41,7 @@ train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_in
     dataset.pickle_load(file_name=dataset_input_settings['user_int_ids']),
     dataset.pickle_load(file_name=dataset_input_settings['product_int_ids']),
     dataset.pickle_load(file_name=dataset_input_settings['query_int_ids']),
-    )
+)
 
 # print(test_normalized_df.groupby('user_id').count().mean())
 # raise SystemError
@@ -66,17 +70,17 @@ elif method == 'svd':
     vf = value_functions.SVDVF()
     recommender = recommenders.SimpleRecommender(vf, name=method)
     recommender.train({
-        'train':train_normalized_df,
-        'num_users':num_users,
-        'num_items':num_items,
-        })
+        'train': train_normalized_df,
+        'num_users': num_users,
+        'num_items': num_items,
+    })
 elif method == 'popular':
     vf = value_functions.PopularVF()
     recommender = recommenders.SimpleRecommender(vf, name=method)
     recommender.train({
         'train': train_normalized_df,
         'items_attributes': attributes_df,
-        })
+    })
 elif method == 'popularitynet':
     loss_function = loss_functions.BPRLoss(1e-4, 0.001)
     nn = neural_networks.PopularityNet(num_items)
@@ -135,10 +139,35 @@ elif method == 'coverage':
     vf = value_functions.Coverage()
     recommender = recommenders.SimpleRecommender(vf, name=method)
     recommender.train({
-        'train':train_normalized_df,
-        'num_users':num_users,
-        'num_items':num_items,
-        })
+        'train': train_normalized_df,
+        'num_users': num_users,
+        'num_items': num_items,
+    })
+elif method == 'lightgcn':
+
+    tmp_train_df = train_normalized_df.copy()
+    tmp_train_df = tmp_train_df.loc[tmp_train_df.is_click > 0]
+    tmp_train_df = tmp_train_df.groupby(['user_id', 'product_id'
+                                        ])['is_click'].sum() > 1
+    tmp_train_df = tmp_train_df.reset_index()
+    tmp_train_df.product_id = tmp_train_df.product_id + num_users
+    tmp_train_df_2 = tmp_train_df.copy()
+    # tmp_train_df.product_id = tmp_train_df.product_id + num_users
+    scootensor = torch.sparse_coo_tensor(
+        np.array([
+            np.hstack([tmp_train_df.user_id.values,tmp_train_df.product_id.values]), 
+            np.hstack([tmp_train_df.product_id.values,tmp_train_df.user_id.values]), 
+            ]),
+        
+        np.hstack([tmp_train_df.is_click.values,tmp_train_df.is_click.values])
+        )
+    nn=neural_networks.LightGCN(30, 3, 0.99, None, pretrain=0,user_emb=None,item_emb=None, dropout=0.01)
+
+    loss_function = loss_functions.BPRLoss(1e-4, 0.001)
+    nnvf = value_functions.NNVF(nn, loss_function)
+    recommender = recommenders.NNRecommender(nnvf, name=method)
+else:
+    raise SystemError
 
 results = []
 product_str_ids = {v: k for k, v in product_int_ids.items()}
@@ -166,4 +195,6 @@ for name, group in tqdm(test_normalized_df.groupby('query_id')):
     # recommender.recommend()
 
 results_df = pd.DataFrame(results, columns=['query_id', 'product_id', 'rank'])
-results_df.to_csv(f'data_phase1/data/{dataset.get_dataset_id(dataset_input_parameters)}_{method}_output.csv', index=False)
+results_df.to_csv(
+    f'data_phase1/data/{dataset.get_dataset_id(dataset_input_parameters)}_{method}_output.csv',
+    index=False)

@@ -47,7 +47,7 @@ class NNVF(ValueFunction):
             sampled_dataset_ = dataset.sample_fixed_size(
                 dataset_, self.batch_size)
             # print(torch.tensor(sampled_dataset.iloc[:, 0].to_numpy())))
-            if isinstance(self.neural_network, (neural_networks.BilinearNet)):
+            if isinstance(self.neural_network, (neural_networks.BilinearNet,neural_networks.LightGCN)):
                 neg = torch.from_numpy(
                     np.random.randint(0, self.neural_network._num_items,
                                       len(sampled_dataset)))

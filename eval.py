@@ -4,7 +4,7 @@ import pandas as pd
 import re
 import joblib
 from torch.optim import optimizer
-from constants import settings
+from constants import source_dataset_settings
 import torch
 import value_functions
 import os.path
@@ -20,17 +20,17 @@ import dataset
 import utils
 import argparse
 
-settings = {
+source_dataset_settings = {
     # 'rate': constants.RATE,
     # 'random_seed': constants.RANDOM_SEED,
-    # 'train_path_name': 'data_phase1/train.parquet',
-    # 'validation_path_name': 'data_phase1/validation.parquet',
-    # 'attributes_path_name': 'data_phase1/attributes.parquet',
-    'train_path_name': 'data_phase1/data/dummies/train.parquet',
-    'validation_path_name': 'data_phase1/data/dummies/validation.parquet',
-    'attributes_path_name': 'data_phase1/data/dummies/attributes.parquet',
-    # 'train_path_name': 'data_phase1/data/train.parquet',
-    # 'validation_path_name': 'data_phase1/data/validation.parquet',
+    # 'train_path': 'data_phase1/train.parquet',
+    # 'validation_path': 'data_phase1/validation.parquet',
+    # 'attributes_path': 'data_phase1/attributes.parquet',
+    'train_path': 'data_phase1/data/dummies/train.parquet',
+    'validation_path': 'data_phase1/data/dummies/validation.parquet',
+    'attributes_path': 'data_phase1/data/dummies/attributes.parquet',
+    # 'train_path': 'data_phase1/data/train.parquet',
+    # 'validation_path': 'data_phase1/data/validation.parquet',
     'user_int_ids': 'data_phase1/data/dummies/user_int_ids.pickle',
     'product_int_ids': 'data_phase1/data/dummies/product_int_ids.pickle',
     'query_int_ids': 'data_phase1/data/dummies/query_int_ids.pickle',
@@ -44,16 +44,16 @@ method = args.m
 # parameters_id = utils.parameters_to_str(parameters)
 
 # train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids = dataset.farfetch_train_test_normalization(
-# dataset.parquet_load(file_name=dataset_parameters['train_path_name']),
-# dataset.parquet_load(file_name=dataset_parameters['validation_path_name']),
-# dataset.parquet_load(file_name=dataset_parameters['attributes_path_name']))
+# dataset.parquet_load(file_name=dataset_parameters['train_path']),
+# dataset.parquet_load(file_name=dataset_parameters['validation_path']),
+# dataset.parquet_load(file_name=dataset_parameters['attributes_path']))
 train_df, validation_df, attributes_df, user_int_ids, product_int_ids, query_int_ids = (
-    dataset.parquet_load(file_name=settings['train_path_name']),
-    dataset.parquet_load(file_name=settings['validation_path_name']),
-    dataset.parquet_load(file_name=settings['attributes_path_name']),
-    dataset.pickle_load(file_name=settings['user_int_ids']),
-    dataset.pickle_load(file_name=settings['product_int_ids']),
-    dataset.pickle_load(file_name=settings['query_int_ids']),
+    dataset.parquet_load(file_name=source_dataset_settings['train_path']),
+    dataset.parquet_load(file_name=source_dataset_settings['validation_path']),
+    dataset.parquet_load(file_name=source_dataset_settings['attributes_path']),
+    dataset.pickle_load(file_name=source_dataset_settings['user_int_ids']),
+    dataset.pickle_load(file_name=source_dataset_settings['product_int_ids']),
+    dataset.pickle_load(file_name=source_dataset_settings['query_int_ids']),
     )
 
 # print(test_normalized_df.groupby('user_id').count().mean())

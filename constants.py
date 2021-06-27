@@ -6,17 +6,17 @@ RANDOM_SEED = 1
 
 EMBEDDING_DIM = 10
 
-settings = {
+source_dataset_settings = {
     # 'rate': constants.RATE,
     # 'random_seed': constants.RANDOM_SEED,
-    # 'train_path_name': 'data_phase1/train.parquet',
-    # 'validation_path_name': 'data_phase1/validation.parquet',
-    # 'attributes_path_name': 'data_phase1/attributes.parquet',
-    'train_path_name': 'data_phase1/data/dummies/train.parquet',
-    'validation_path_name': 'data_phase1/data/dummies/validation.parquet',
-    'attributes_path_name': 'data_phase1/data/dummies/attributes.parquet',
-    # 'train_path_name': 'data_phase1/data/train.parquet',
-    # 'validation_path_name': 'data_phase1/data/validation.parquet',
+    # 'train_path': 'data_phase1/train.parquet',
+    # 'validation_path': 'data_phase1/validation.parquet',
+    # 'attributes_path': 'data_phase1/attributes.parquet',
+    'train_path': 'data_phase1/data/dummies/train.parquet',
+    'validation_path': 'data_phase1/data/dummies/validation.parquet',
+    'attributes_path': 'data_phase1/data/dummies/attributes.parquet',
+    # 'train_path': 'data_phase1/data/train.parquet',
+    # 'validation_path': 'data_phase1/data/validation.parquet',
     'user_int_ids': 'data_phase1/data/dummies/user_int_ids.pickle',
     'product_int_ids': 'data_phase1/data/dummies/product_int_ids.pickle',
     'query_int_ids': 'data_phase1/data/dummies/query_int_ids.pickle',

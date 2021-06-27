@@ -1,4 +1,5 @@
 from utils import create_path_to_file
+import json
 import sklearn.decomposition
 import sklearn.feature_selection
 import pickle
@@ -236,47 +237,66 @@ def sample_fixed_size(df, num_samples):
 # self.validation_path = validation_path
 # self.attributes_path = attributes_path
 # pass
-def dataset_settings_factory(name, parameters=None):
+def get_dataset_id(name,parameters):
+    return '{%s:'%name+json.dumps(parameters, separators=(',', ':'))+'}'
+
+
+def dataset_settings_factory(name,parameters):
+    # name = list(parameters.keys())[0]
+    # pv = list(parameters.values())[0]
+    pv = parameters
+    dataset_id = get_dataset_id(name,parameters)
     if name == 'farfetch':
         return {
-            'train_path_name': 'data_phase1/train.parquet',
-            'validation_path_name': 'data_phase1/validation.parquet',
-            'attributes_path_name': 'data_phase1/attributes.parquet'
+            'train_path': 'data_phase1/train.parquet',
+            'validation_path': 'data_phase1/validation.parquet',
+            'attributes_path': 'data_phase1/attributes.parquet'
         }
-    elif name == 'farfetchdummies':
-        return {
-            'train_path_name':
-                'data_phase1/data/dummies/train.parquet',
-            'validation_path_name':
-                'data_phase1/data/dummies/validation.parquet',
-            'attributes_path_name':
-                'data_phase1/data/dummies/attributes.parquet',
-            'user_int_ids':
-                'data_phase1/data/dummies/user_int_ids.pickle',
-            'product_int_ids':
-                'data_phase1/data/dummies/product_int_ids.pickle',
-            'query_int_ids':
-                'data_phase1/data/dummies/query_int_ids.pickle',
-        }
+    # elif name == 'farfetchdummies':
+        # return {
+            # 'train_path':
+                # 'data_phase1/data/dummies/train.parquet',
+            # 'validation_path':
+                # 'data_phase1/data/dummies/validation.parquet',
+            # 'attributes_path':
+                # 'data_phase1/data/dummies/attributes.parquet',
+            # 'user_int_ids':
+                # 'data_phase1/data/dummies/user_int_ids.pickle',
+            # 'product_int_ids':
+                # 'data_phase1/data/dummies/product_int_ids.pickle',
+            # 'query_int_ids':
+                # 'data_phase1/data/dummies/query_int_ids.pickle',
+        # }
     elif name == 'split':
         return {
-            'train_path_name':
-                'data_phase1/data/{}_{}_{}_train.parquet'.format(
-                    name, parameters['base_name'], parameters['train_size']),
-            'validation_path_name':  # 'data_phase1/data/dummies/validation.parquet',
-                'data_phase1/data/{}_{}_{}_validation.parquet'.format(
-                    name, parameters['base_name'], parameters['train_size']),
-            'attributes_path_name':  # 'data_phase1/data/dummies/attributes.parquet',
-                'data_phase1/data/{}_{}_{}_attributes.parquet'.format(
-                    name, parameters['base_name'], parameters['train_size']),
-            'user_int_ids':
-                'data_phase1/data/{}_{}_{}_user_int_ids.parquet'.format(
-                    name, parameters['base_name'], parameters['train_size']),
-            'product_int_ids':
-                'data_phase1/data/{}_{}_{}_product_int_ids.parquet'.format(
-                    name, parameters['base_name'], parameters['train_size']),
-            'query_int_ids':
-                'data_phase1/data/{}_{}_{}_query_int_ids.parquet'.format(
-                    name, parameters['base_name'], parameters['train_size']),
+            'train_path':
+                'data_phase1/data/{}_train.parquet'.format(dataset_id),
+            'validation_path':  # 'data_phase1/data/dummies/validation.parquet',
+                'data_phase1/data/{}_validation.parquet'.format(
+                    dataset_id),
+            'attributes_path':  # 'data_phase1/data/dummies/attributes.parquet',
+                'data_phase1/attributes.parquet',
+            'user_int_ids':None,
+            'product_int_ids':None,
+            'query_int_ids':None,
         }
-    return {}
+    else:
+        return {
+            'train_path':
+                'data_phase1/data/{}_train.parquet'.format(dataset_id),
+            'validation_path':  # 'data_phase1/data/dummies/validation.parquet',
+                'data_phase1/data/{}_validation.parquet'.format(
+                    dataset_id),
+            'attributes_path':  # 'data_phase1/data/dummies/attributes.parquet',
+                'data_phase1/data/{}_attributes.parquet'.format(
+                    dataset_id),
+            'user_int_ids':
+                'data_phase1/data/{}_user_int_ids.parquet'.format(
+                    dataset_id),
+            'product_int_ids':
+                'data_phase1/data/{}_product_int_ids.parquet'.format(
+                    dataset_id),
+            'query_int_ids':
+                'data_phase1/data/{}_query_int_ids.parquet'.format(
+                    dataset_id),
+        }

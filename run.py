@@ -2,7 +2,7 @@ import pandas as pd
 import re
 import joblib
 from torch.optim import optimizer
-from constants import settings
+from constants import source_dataset_settings
 import torch
 import value_functions
 import os.path
@@ -17,28 +17,28 @@ import time
 import dataset
 import utils
 import argparse
-from constants import settings
+from constants import source_dataset_settings
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument('-m', type=str)
 args = argparser.parse_args()
 method = args.m
 
-dataset_parameters_id = joblib.hash(settings)
+dataset_parameters_id = joblib.hash(source_dataset_settings)
 # negative_file_name = 'negative_samples_'+dataset_parameters_id
 # parameters_id = utils.parameters_to_str(parameters)
 
 # train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids = dataset.farfetch_train_test_normalization(
-# dataset.parquet_load(file_name=dataset_parameters['train_path_name']),
-# dataset.parquet_load(file_name=dataset_parameters['validation_path_name']),
-# dataset.parquet_load(file_name=dataset_parameters['attributes_path_name']))
+# dataset.parquet_load(file_name=dataset_parameters['train_path']),
+# dataset.parquet_load(file_name=dataset_parameters['validation_path']),
+# dataset.parquet_load(file_name=dataset_parameters['attributes_path']))
 train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_int_ids, query_int_ids = (
-    dataset.parquet_load(file_name=settings['train_path_name']),
-    dataset.parquet_load(file_name=settings['validation_path_name']),
-    dataset.parquet_load(file_name=settings['attributes_path_name']),
-    dataset.pickle_load(file_name=settings['user_int_ids']),
-    dataset.pickle_load(file_name=settings['product_int_ids']),
-    dataset.pickle_load(file_name=settings['query_int_ids']),
+    dataset.parquet_load(file_name=source_dataset_settings['train_path']),
+    dataset.parquet_load(file_name=source_dataset_settings['validation_path']),
+    dataset.parquet_load(file_name=source_dataset_settings['attributes_path']),
+    dataset.pickle_load(file_name=source_dataset_settings['user_int_ids']),
+    dataset.pickle_load(file_name=source_dataset_settings['product_int_ids']),
+    dataset.pickle_load(file_name=source_dataset_settings['query_int_ids']),
     )
 
 # print(test_normalized_df.groupby('user_id').count().mean())

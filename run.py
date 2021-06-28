@@ -17,15 +17,18 @@ import dataset
 import utils
 import argparse
 
-dataset_1_parameters = {'farfetch': {}}
 # dataset_output_name= 'split'
-dataset_input_parameters = {
+# dataset_input_parameters = {'dummies': 
+        # {
+        # 'base': {'farfetch': {}},
+# }
+# }
+dataset_input_parameters = {'dummies': {'base': {
     'split': {
-        'base': dataset_1_parameters,
+        'base': {'farfetch': {}},
         'train_size': 0.8
     }
-}
-dataset_input_parameters = {'dummies': {'base': dataset_input_parameters}}
+}}}
 dataset_input_settings = dataset.dataset_settings_factory(
     dataset_input_parameters)
 

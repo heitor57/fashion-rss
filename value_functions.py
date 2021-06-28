@@ -179,8 +179,10 @@ class PopularVF(ValueFunction):
         
         self.items_popularity = np.zeros(len(dataset_['items_attributes']))
         train = dataset_['train']
-        for user_id, product_id in tqdm(train.loc[train.is_click>0].groupby(['user_id','product_id']).count().reset_index()[['user_id','product_id']].iterrows()):
+        for user_id, product_id in tqdm(train.loc[train.is_click>0].iterrows()):
             self.items_popularity[product_id['product_id']] +=1
+        # for user_id, product_id in tqdm(train.loc[train.is_click>0].groupby(['user_id','product_id']).count().reset_index()[['user_id','product_id']].iterrows()):
+            # self.items_popularity[product_id['product_id']] +=1
         pass
 
     def predict(self, users, items):

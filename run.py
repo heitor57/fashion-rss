@@ -50,6 +50,8 @@ train_normalized_df, test_normalized_df, attributes_df, user_int_ids, product_in
 
 num_users = len(user_int_ids)
 num_items = len(product_int_ids)
+
+print('users',num_users,'items',num_items)
 if method == 'bi':
 
     loss_function = loss_functions.BPRLoss(1e-4, 0.001)
@@ -160,14 +162,16 @@ elif method == 'lightgcn':
             ]),
         
         np.hstack([tmp_train_df.is_click.values,tmp_train_df.is_click.values])
-        )
-    nn=neural_networks.LightGCN(30, 3, 0.99, None, pretrain=0,user_emb=None,item_emb=None, dropout=0.01)
+        ,dtype=int,size=(num_users+num_items,num_users+num_items))
+    scootensor = scootensor.coalesce()
+    nn=neural_networks.LightGCN(latent_dim_rec=30, lightGCN_n_layers=3, keep_prob=0.99, A_split=False, pretrain=0,user_emb=None,item_emb=None, dropout=0.01,graph=scootensor,_num_users=num_users,_num_items=num_items, training=True)
 
     loss_function = loss_functions.BPRLoss(1e-4, 0.001)
     nnvf = value_functions.NNVF(nn, loss_function)
     recommender = recommenders.NNRecommender(nnvf, name=method)
+    recommender.train(train_normalized_df)
 elif method == 'stacking':
-    
+    pass
 else:
     raise SystemError
 

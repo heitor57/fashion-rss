@@ -50,10 +50,10 @@ class NNVF(ValueFunction):
             if isinstance(self.neural_network, (neural_networks.BilinearNet,neural_networks.LightGCN)):
                 neg = torch.from_numpy(
                     np.random.randint(0, self.neural_network._num_items,
-                                      len(sampled_dataset)))
+                                      len(sampled_dataset_)))
                 loss = self.loss_function.compute(
-                    torch.tensor(sampled_dataset['user_id'].to_numpy()),
-                    torch.tensor(sampled_dataset['product_id'].to_numpy()),
+                    torch.tensor(sampled_dataset_['user_id'].to_numpy()),
+                    torch.tensor(sampled_dataset_['product_id'].to_numpy()),
                     neg,
                     # torch.tensor(
                         # sampled_dataset['products_sampled'].to_numpy()),
@@ -61,14 +61,14 @@ class NNVF(ValueFunction):
             elif isinstance(self.neural_network, (neural_networks.PoolNet)):
                 items_sequences = [
                     users_consumed_items.loc[i]
-                    for i in sampled_dataset['user_id'].to_numpy()
+                    for i in sampled_dataset_['user_id'].to_numpy()
                 ]
                 loss = 0
                 count = 0
                 for i, j, k in zip(
                         items_sequences,
-                        torch.tensor(sampled_dataset['product_id'].to_numpy()),
-                        torch.tensor(sampled_dataset['is_click'].to_numpy())):
+                        torch.tensor(sampled_dataset_['product_id'].to_numpy()),
+                        torch.tensor(sampled_dataset_['is_click'].to_numpy())):
                     loss += self.loss_function.compute(i, j, k)
                     count += 1
                 loss /= count
@@ -76,17 +76,17 @@ class NNVF(ValueFunction):
                             (neural_networks.PopularityNet)):
                 neg = torch.from_numpy(
                     np.random.randint(0, self.neural_network._num_items,
-                                      len(sampled_dataset)))
+                                      len(sampled_dataset_)))
                 loss = self.loss_function.compute(None,
-                    torch.tensor(sampled_dataset['product_id'].to_numpy()), neg)
+                    torch.tensor(sampled_dataset_['product_id'].to_numpy()), neg)
             elif isinstance(self.neural_network,
                             (neural_networks.ContextualPopularityNet)):
                 # print(
                 neg = torch.from_numpy(
                     np.random.randint(0, self.neural_network._num_items,
-                                      len(sampled_dataset)))
-                loss = self.loss_function.compute(sampled_dataset,
-                    torch.tensor(sampled_dataset['product_id'].to_numpy()), neg)
+                                      len(sampled_dataset_)))
+                loss = self.loss_function.compute(sampled_dataset_,
+                    torch.tensor(sampled_dataset_['product_id'].to_numpy()), neg)
                 # sampled_dataset
                 # self.neural_network.
 

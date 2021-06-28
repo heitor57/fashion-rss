@@ -360,8 +360,8 @@ class NCF(nn.Module):
 		prediction = self.predict_layer(concat)
 		return prediction.view(-1)
 
-class LightGCN():
-    def __init__(self,latent_dim_rec,lightGCN_n_layers,keep_prob,A_split,pretrain,user_emb,item_emb,dropout):
+class LightGCN(nn.Module):
+    def __init__(self,latent_dim_rec,lightGCN_n_layers,keep_prob,A_split,pretrain,user_emb,item_emb,dropout, graph,_num_users,_num_items,training):
         super().__init__()
         self.latent_dim_rec = latent_dim_rec
         self.lightGCN_n_layers= lightGCN_n_layers
@@ -372,20 +372,21 @@ class LightGCN():
         self.item_emb = item_emb
         self.dropout = dropout
         # self.config = config
-        # self.dataset : dataloader.BasicDataset = dataset
+        self.graph = graph
+        self._num_items = _num_items
+        self._num_users = _num_users
+        self.training = training
         self.__init_weight()
 
     def __init_weight(self):
-        self.num_users  = self.dataset.n_users
-        self.num_items  = self.dataset.m_items
         self.latent_dim = self.latent_dim_rec
         self.n_layers = self.lightGCN_n_layers
         self.keep_prob = self.keep_prob
         self.A_split = self.A_split
         self.embedding_user = torch.nn.Embedding(
-            num_embeddings=self.num_users, embedding_dim=self.latent_dim)
+            num_embeddings=self._num_users, embedding_dim=self.latent_dim)
         self.embedding_item = torch.nn.Embedding(
-            num_embeddings=self.num_items, embedding_dim=self.latent_dim)
+            num_embeddings=self._num_items, embedding_dim=self.latent_dim)
         if self.pretrain == 0:
 #             nn.init.xavier_uniform_(self.embedding_user.weight, gain=1)
 #             nn.init.xavier_uniform_(self.embedding_item.weight, gain=1)
@@ -393,13 +394,12 @@ class LightGCN():
 # random normal init seems to be a better choice when lightGCN actually don't use any non-linear activation function
             nn.init.normal_(self.embedding_user.weight, std=0.1)
             nn.init.normal_(self.embedding_item.weight, std=0.1)
-            world.cprint('use NORMAL distribution initilizer')
         else:
             self.embedding_user.weight.data.copy_(torch.from_numpy(self.user_emb))
             self.embedding_item.weight.data.copy_(torch.from_numpy(self.item_emb))
             print('use pretarined data')
         self.f = nn.Sigmoid()
-        self.Graph = self.dataset.getSparseGraph()
+        # self.Graph = self.dataset.getSparseGraph()
         print(f"lgn is already to go(dropout:{self.dropout})")
 
         # print("save_txt")
@@ -417,10 +417,10 @@ class LightGCN():
     def __dropout(self, keep_prob):
         if self.A_split:
             graph = []
-            for g in self.Graph:
+            for g in self.graph:
                 graph.append(self.__dropout_x(g, keep_prob))
         else:
-            graph = self.__dropout_x(self.Graph, keep_prob)
+            graph = self.__dropout_x(self.graph, keep_prob)
         return graph
     
     def computer(self):
@@ -437,9 +437,9 @@ class LightGCN():
                 print("droping")
                 g_droped = self.__dropout(self.keep_prob)
             else:
-                g_droped = self.Graph        
+                g_droped = self.graph        
         else:
-            g_droped = self.Graph    
+            g_droped = self.graph    
         
         for layer in range(self.n_layers):
             if self.A_split:
@@ -449,12 +449,13 @@ class LightGCN():
                 side_emb = torch.cat(temp_emb, dim=0)
                 all_emb = side_emb
             else:
+                # print(g_droped.shape,all_emb.shape)
                 all_emb = torch.sparse.mm(g_droped, all_emb)
             embs.append(all_emb)
         embs = torch.stack(embs, dim=1)
         #print(embs.size())
         light_out = torch.mean(embs, dim=1)
-        users, items = torch.split(light_out, [self.num_users, self.num_items])
+        users, items = torch.split(light_out, [self._num_users, self._num_items])
         return users, items
     
     def getUsersRating(self, users):

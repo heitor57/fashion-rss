@@ -96,6 +96,8 @@ class NNVF(ValueFunction):
     def predict(self, users, items,users_context=None):
         users = torch.tensor(users)
         items = torch.tensor(items)
+        # users = torch.tensor(users,dtype=torch.long)
+        # items = torch.tensor(items,dtype=torch.long)
         if isinstance(self.neural_network,neural_networks.PopularityNet):
             v = self.neural_network.forward(items)
         elif isinstance(self.neural_network,

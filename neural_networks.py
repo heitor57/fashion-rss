@@ -437,7 +437,7 @@ class LightGCN(nn.Module):
                 print("droping")
                 g_droped = self.__dropout(self.keep_prob)
             else:
-                g_droped = self.graph        
+                g_droped = self.graph
         else:
             g_droped = self.graph    
         
@@ -450,6 +450,7 @@ class LightGCN(nn.Module):
                 all_emb = side_emb
             else:
                 # print(g_droped.shape,all_emb.shape)
+                # print(g_droped.dtype,all_emb.dtype)
                 all_emb = torch.sparse.mm(g_droped, all_emb)
             embs.append(all_emb)
         embs = torch.stack(embs, dim=1)

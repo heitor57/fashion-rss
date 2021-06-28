@@ -55,9 +55,9 @@ tmp_train_df.is_click = tmp_train_df.is_click.astype(int)
 tmp_train_df.to_csv(dataset_output_settings['train_path'],header=None,index=None)
 
 tmp_train_df = test_normalized_df.copy()
-tmp_train_df = tmp_train_df.loc[tmp_train_df.is_click > 0]
-tmp_train_df = tmp_train_df.groupby(['user_id', 'product_id'
-                                    ])['is_click'].sum() >= 1
-tmp_train_df = tmp_train_df.reset_index()
+# tmp_train_df = tmp_train_df.loc[tmp_train_df.is_click > 0]
+# tmp_train_df = tmp_train_df.groupby(['user_id', 'product_id'
+                                    # ])['is_click'].sum() >= 1
+tmp_train_df = tmp_train_df[['user_id','product_id','is_click']]
 tmp_train_df.is_click = tmp_train_df.is_click.astype(int)
 tmp_train_df.to_csv(dataset_output_settings['validation_path'],header=None,index=None)

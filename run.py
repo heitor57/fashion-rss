@@ -166,6 +166,8 @@ elif method == 'lightgcn':
     loss_function = loss_functions.BPRLoss(1e-4, 0.001)
     nnvf = value_functions.NNVF(nn, loss_function)
     recommender = recommenders.NNRecommender(nnvf, name=method)
+elif method == 'stacking':
+    
 else:
     raise SystemError
 

@@ -152,10 +152,10 @@ elif method == 'ncf':
     nnvf = value_functions.GeneralizedNNVF(neural_network=nn,
                                  loss_function=torch.nn.BCEWithLogitsLoss(),
                                  optimizer=torch.optim.Adam(nn.parameters(),
-                                                            lr=0.001),
-                                 epochs=2000,
-                                 # sample_function=lambda x: dataset.sample_fixed_size(x,len(x))
-                                 sample_function=lambda x: dataset.sample_fixed_size(x,2048)
+                                                            lr=0.0001),
+                                 epochs=100,
+                                 sample_function=lambda x: dataset.sample_fixed_size(x,len(x))
+                                 # sample_function=lambda x: dataset.sample_fixed_size(x,100000)
                                  )
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)

@@ -162,6 +162,7 @@ class NCFVF(ValueFunction):
             t.set_description(f'{loss}')
             t.refresh()
 
+
     def predict(self, users, items, users_context=None):
         users = torch.tensor(users)
         items = torch.tensor(items)
@@ -177,9 +178,10 @@ class PopularVF(ValueFunction):
         
         self.items_popularity = np.zeros(len(dataset_['items_attributes']))
         for user_id, product_id in tqdm(dataset_['train'].groupby(['user_id','product_id']).count().reset_index()[['user_id','product_id']].iterrows()):
-            # print(row['product_id'])
+            print(row['product_id'])
             self.items_popularity[product_id['product_id']] +=1
-        pass
+        # pickle.dump(self.items_popularity, open("data_phase1/items_popularity.pk", "wb"))
+        # self.items_popularity = pickle.load(open("data_phase1/items_popularity.pk", "rb"))
 
     def predict(self, users, items):
         return self.items_popularity[items]
@@ -258,3 +260,42 @@ class Coverage(ValueFunction):
 
         # return [self.coverage[item] for item in items] 
         return result 
+
+class Stacking(ValueFunction):
+    
+    def __init__(self, models):
+        self.models = models
+
+    def train(self, dataset_train):
+       
+        self.items_values = {}
+        for model_name in self.models:
+            
+            if model_name == "NCFVF":
+                
+                self.items_values[model_name] = np.zeros(len(dataset_train['items_attributes']))
+                self.models[model_name].train(dataset_train["train"])
+                # pickle.dump(self.models[model_name], open("model_ncf.pk", "wb"))
+                self.models[model_name] = pickle.load(open("model_ncf.pk", "rb"))
+                for name, group in tqdm(dataset_train["train"].groupby('query_id')):
+                    values = self.models[model_name].value_function.predict(group['user_id'].to_numpy(),group['product_id'].to_numpy())
+                    for i, pid in enumerate(group['product_id'].to_numpy()):
+                        self.items_values[model_name][pid] = values[i]
+
+            elif model_name == "PopularVF":
+                self.models[model_name].train(dataset_train)
+                self.items_values[model_name] = self.models[model_name].value_function.items_popularity
+
+        # pickle.dump(self.items_values, open("items_values.pk", "wb"))
+
+    def predict(self, users, items):
+        # result = []
+        # for item in items:
+        #     if item in self.coverage:
+        #         result.append(item)
+        #     else:
+        #         result.append(-99999)
+
+        # # return [self.coverage[item] for item in items] 
+        # return result 
+        pass

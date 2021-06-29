@@ -16,6 +16,7 @@ import time
 import dataset
 import utils
 import argparse
+import pickle
 
 dataset_1_parameters = {'farfetch': {}}
 # dataset_output_name= 'split'
@@ -127,15 +128,17 @@ elif method == 'contextualpopularitynet':
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
 elif method == 'ncf':
-    nn = neural_networks.NCF(num_users, num_items, constants.EMBEDDING_DIM, 3,
-                             0.0, 'NeuMF-end')
-    nnvf = value_functions.NCFVF(neural_network=nn,
-                                 loss_function=torch.nn.BCEWithLogitsLoss(),
-                                 optimizer=torch.optim.Adam(nn.parameters(),
-                                                            lr=0.0001),
-                                 epochs=20)
-    recommender = recommenders.NNRecommender(nnvf, name=method)
-    recommender.train(train_normalized_df)
+    # nn = neural_networks.NCF(num_users, num_items, constants.EMBEDDING_DIM, 3,
+    #                          0.0, 'NeuMF-end')
+    # nnvf = value_functions.NCFVF(neural_network=nn,
+    #                              loss_function=torch.nn.BCEWithLogitsLoss(),
+    #                              optimizer=torch.optim.Adam(nn.parameters(),
+    #                                                         lr=0.0001),
+    #                              epochs=20)
+    # recommender = recommenders.NNRecommender(nnvf, name=method)
+    # recommender.train(train_normalized_df)
+    # pickle.dump(recommender, open("data_phase1/recommender_NCF.pk", "wb"))
+    recommender = pickle.load(open("data_phase1/recommender_NCF.pk", "rb"))
 
 elif method == 'coverage':
     vf = value_functions.Coverage()
@@ -145,6 +148,7 @@ elif method == 'coverage':
         'num_users': num_users,
         'num_items': num_items,
     })
+
 elif method == 'lightgcn':
 
     tmp_train_df = train_normalized_df.copy()
@@ -171,15 +175,39 @@ elif method == 'lightgcn':
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
 elif method == 'stacking':
-    pass
+
+    vf = value_functions.PopularVF()
+    recommender_PopularVF = recommenders.SimpleRecommender(vf, name=method)
+
+    nn = neural_networks.NCF(num_users, num_items, constants.EMBEDDING_DIM, 3,
+                             0.0, 'NeuMF-end')
+    nnvf = value_functions.NCFVF(neural_network=nn,
+                                 loss_function=torch.nn.BCEWithLogitsLoss(),
+                                 optimizer=torch.optim.Adam(nn.parameters(),
+                                                            lr=0.0001),
+                                 epochs=20)
+
+    recommender_NCF = recommenders.NNRecommender(nnvf, name=method)
+    
+    models = {'PopularVF': recommender_PopularVF, 'NCFVF': recommender_NCF}
+
+    recommender = value_functions.Stacking(models=models)
+    recommender.train({
+        'train': train_normalized_df,
+        'items_attributes': attributes_df,
+    })
+
 else:
     raise SystemError
 
 results = []
 product_str_ids = {v: k for k, v in product_int_ids.items()}
 query_str_ids = {v: k for k, v in query_int_ids.items()}
+input("inicio")
 for name, group in tqdm(test_normalized_df.groupby('query_id')):
-
+    user_teste = group['user_id'].to_numpy()[0]
+    print(group['user_id'].to_numpy()[0], group['product_id'].to_numpy())
+    input(">>")
     # print(group['user_id'].to_numpy())
     # print(group['product_id'].to_numpy())
     if method == 'contextualpopularitynet':

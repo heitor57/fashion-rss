@@ -18,15 +18,18 @@ import utils
 import argparse
 import pickle
 
-dataset_1_parameters = {'farfetch': {}}
 # dataset_output_name= 'split'
-dataset_input_parameters = {
+# dataset_input_parameters = {'dummies': 
+        # {
+        # 'base': {'farfetch': {}},
+# }
+# }
+dataset_input_parameters = {'dummies': {'base': {
     'split': {
-        'base': dataset_1_parameters,
+        'base': {'farfetch': {}},
         'train_size': 0.8
     }
-}
-dataset_input_parameters = {'dummies': {'base': dataset_input_parameters}}
+}}}
 dataset_input_settings = dataset.dataset_settings_factory(
     dataset_input_parameters)
 
@@ -166,14 +169,15 @@ elif method == 'lightgcn':
             ]),
         
         np.hstack([tmp_train_df.is_click.values,tmp_train_df.is_click.values])
-        ,dtype=int,size=(num_users+num_items,num_users+num_items))
+        ,dtype=torch.float,size=(num_users+num_items,num_users+num_items))
     scootensor = scootensor.coalesce()
     nn=neural_networks.LightGCN(latent_dim_rec=30, lightGCN_n_layers=3, keep_prob=0.99, A_split=False, pretrain=0,user_emb=None,item_emb=None, dropout=0.01,graph=scootensor,_num_users=num_users,_num_items=num_items, training=True)
 
     loss_function = loss_functions.BPRLoss(1e-4, 0.001)
-    nnvf = value_functions.NNVF(nn, loss_function)
+    nnvf = value_functions.NNVF(nn, loss_function,num_batchs=700)
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
+    nn.training = False
 elif method == 'stacking':
 
     vf = value_functions.PopularVF()

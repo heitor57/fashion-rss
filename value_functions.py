@@ -96,6 +96,8 @@ class NNVF(ValueFunction):
     def predict(self, users, items,users_context=None):
         users = torch.tensor(users)
         items = torch.tensor(items)
+        # users = torch.tensor(users,dtype=torch.long)
+        # items = torch.tensor(items,dtype=torch.long)
         if isinstance(self.neural_network,neural_networks.PopularityNet):
             v = self.neural_network.forward(items)
         elif isinstance(self.neural_network,
@@ -177,11 +179,20 @@ class PopularVF(ValueFunction):
     def train(self, dataset_):
         
         self.items_popularity = np.zeros(len(dataset_['items_attributes']))
+<<<<<<< HEAD
         for user_id, product_id in tqdm(dataset_['train'].groupby(['user_id','product_id']).count().reset_index()[['user_id','product_id']].iterrows()):
             print(row['product_id'])
             self.items_popularity[product_id['product_id']] +=1
         # pickle.dump(self.items_popularity, open("data_phase1/items_popularity.pk", "wb"))
         # self.items_popularity = pickle.load(open("data_phase1/items_popularity.pk", "rb"))
+=======
+        train = dataset_['train']
+        for user_id, product_id in tqdm(train.loc[train.is_click>0].iterrows()):
+            self.items_popularity[product_id['product_id']] +=1
+        # for user_id, product_id in tqdm(train.loc[train.is_click>0].groupby(['user_id','product_id']).count().reset_index()[['user_id','product_id']].iterrows()):
+            # self.items_popularity[product_id['product_id']] +=1
+        pass
+>>>>>>> aceca5a54164ee3f922034d1a25143d6161144b8
 
     def predict(self, users, items):
         return self.items_popularity[items]

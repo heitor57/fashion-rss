@@ -18,7 +18,6 @@ import utils
 import argparse
 import pickle
 
-# dataset_output_name= 'split'
 # dataset_input_parameters = {'dummies': 
         # {
         # 'base': {'farfetch': {}},
@@ -88,16 +87,16 @@ elif method == 'popular':
         'items_attributes': attributes_df,
     })
 elif method == 'popularitynet':
-    loss_function = loss_functions.BPRLoss(1e-4, 0.001)
+    loss_function = loss_functions.BPRLoss(1e-3, 0.01)
     nn = neural_networks.PopularityNet(num_items)
     nnvf = value_functions.NNVF(nn,
                                 loss_function,
-                                num_batchs=2000,
+                                num_batchs=1000,
                                 batch_size=2048)
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
 elif method == 'contextualpopularitynet':
-    loss_function = loss_functions.BPRLoss(1e-4, 0.001)
+    loss_function = loss_functions.BPRLoss(1e-4, 0.01)
     # loss_function = loss_functions.RegressionLoss()
     # items_columns = list(map(str,list(range(0,32))))
     # items_columns = [
@@ -123,25 +122,25 @@ elif method == 'contextualpopularitynet':
     ]
     nn = neural_networks.ContextualPopularityNet(num_items,
                                                  attributes_df[items_columns],
-                                                 users_columns)
+                                                 users_columns,dropout=0.0,num_layers=4)
     nnvf = value_functions.NNVF(nn,
                                 loss_function,
-                                num_batchs=9000,
+                                num_batchs=2000,
                                 batch_size=2048)
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
 elif method == 'ncf':
-    # nn = neural_networks.NCF(num_users, num_items, constants.EMBEDDING_DIM, 3,
-    #                          0.0, 'NeuMF-end')
-    # nnvf = value_functions.NCFVF(neural_network=nn,
-    #                              loss_function=torch.nn.BCEWithLogitsLoss(),
-    #                              optimizer=torch.optim.Adam(nn.parameters(),
-    #                                                         lr=0.0001),
-    #                              epochs=20)
-    # recommender = recommenders.NNRecommender(nnvf, name=method)
-    # recommender.train(train_normalized_df)
+    nn = neural_networks.NCF(num_users, num_items, constants.EMBEDDING_DIM, 3,
+                             0.0, 'NeuMF-end')
+    nnvf = value_functions.GeneralizedNNVF(neural_network=nn,
+                                 loss_function=torch.nn.BCEWithLogitsLoss(),
+                                 optimizer=torch.optim.Adam(nn.parameters(),
+                                                            lr=0.0001),
+                                 epochs=20)
+    recommender = recommenders.NNRecommender(nnvf, name=method)
+    recommender.train(train_normalized_df)
     # pickle.dump(recommender, open("data_phase1/recommender_NCF.pk", "wb"))
-    recommender = pickle.load(open("data_phase1/recommender_NCF.pk", "rb"))
+    # recommender = pickle.load(open("data_phase1/recommender_NCF.pk", "rb"))
 
 elif method == 'coverage':
     vf = value_functions.Coverage()
@@ -171,10 +170,10 @@ elif method == 'lightgcn':
         np.hstack([tmp_train_df.is_click.values,tmp_train_df.is_click.values])
         ,dtype=torch.float,size=(num_users+num_items,num_users+num_items))
     scootensor = scootensor.coalesce()
-    nn=neural_networks.LightGCN(latent_dim_rec=30, lightGCN_n_layers=3, keep_prob=0.99, A_split=False, pretrain=0,user_emb=None,item_emb=None, dropout=0.01,graph=scootensor,_num_users=num_users,_num_items=num_items, training=True)
+    nn=neural_networks.LightGCN(latent_dim_rec=50, lightGCN_n_layers=3, keep_prob=0.99, A_split=False, pretrain=0,user_emb=None,item_emb=None, dropout=0.01,graph=scootensor,_num_users=num_users,_num_items=num_items, training=True)
 
     loss_function = loss_functions.BPRLoss(1e-4, 0.001)
-    nnvf = value_functions.NNVF(nn, loss_function,num_batchs=700)
+    nnvf = value_functions.NNVF(nn, loss_function,num_batchs=200)
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
     nn.training = False
@@ -185,7 +184,7 @@ elif method == 'stacking':
 
     nn = neural_networks.NCF(num_users, num_items, constants.EMBEDDING_DIM, 3,
                              0.0, 'NeuMF-end')
-    nnvf = value_functions.NCFVF(neural_network=nn,
+    nnvf = value_functions.GeneralizedNNVF(neural_network=nn,
                                  loss_function=torch.nn.BCEWithLogitsLoss(),
                                  optimizer=torch.optim.Adam(nn.parameters(),
                                                             lr=0.0001),

@@ -124,7 +124,7 @@ class RandomVF(ValueFunction):
         return v
 
 
-class NCFVF(ValueFunction):
+class GeneralizedNNVF(ValueFunction):
 
     def __init__(self, neural_network, optimizer, loss_function,epochs, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -136,17 +136,7 @@ class NCFVF(ValueFunction):
 
     def train(self, dataset_):
         print(dataset_)
-        # dataset = dataset_.loc[dataset_.is_click > 0]
-        dataset_['is_click'].loc[dataset_.is_click==0] = -1
-        dataset_ = dataset_.groupby(['user_id','product_id'])['is_click'].sum().reset_index()
-        dataset_['is_click'].loc[dataset_.is_click>0] = 1
-        dataset_['is_click'].loc[dataset_.is_click<=0] = 0
-        # if dataset_.is_click.min()<0:
-            # dataset_.is_click += np.abs(dataset_.is_click.min())
-        # print(dataset_)
-        # print(dataset_.describe())
-        # print(dataset_.is_click.value_counts().sort_index())
-        # raise SystemExit
+        dataset_ = dataset_.loc[dataset_.is_click > 0]
 
         t = tqdm(range(self.epochs))
         for _ in t:
@@ -179,20 +169,12 @@ class PopularVF(ValueFunction):
     def train(self, dataset_):
         
         self.items_popularity = np.zeros(len(dataset_['items_attributes']))
-<<<<<<< HEAD
-        for user_id, product_id in tqdm(dataset_['train'].groupby(['user_id','product_id']).count().reset_index()[['user_id','product_id']].iterrows()):
-            print(row['product_id'])
-            self.items_popularity[product_id['product_id']] +=1
-        # pickle.dump(self.items_popularity, open("data_phase1/items_popularity.pk", "wb"))
-        # self.items_popularity = pickle.load(open("data_phase1/items_popularity.pk", "rb"))
-=======
         train = dataset_['train']
         for user_id, product_id in tqdm(train.loc[train.is_click>0].iterrows()):
             self.items_popularity[product_id['product_id']] +=1
         # for user_id, product_id in tqdm(train.loc[train.is_click>0].groupby(['user_id','product_id']).count().reset_index()[['user_id','product_id']].iterrows()):
             # self.items_popularity[product_id['product_id']] +=1
         pass
->>>>>>> aceca5a54164ee3f922034d1a25143d6161144b8
 
     def predict(self, users, items):
         return self.items_popularity[items]

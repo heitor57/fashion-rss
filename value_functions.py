@@ -146,7 +146,10 @@ class GeneralizedNNVF(ValueFunction):
             item_id = torch.tensor(sampled_dataset.product_id.to_numpy()).int()
             is_click = torch.tensor(sampled_dataset.is_click.to_numpy()).float()
             self.neural_network.zero_grad()
-            prediction = self.neural_network(user_id, item_id)
+            if isinstance(self.neural_network, (neural_networks.PopularityNet)):
+                prediction = self.neural_network(item_id)
+            else:
+                prediction = self.neural_network(user_id, item_id)
             loss = self.loss_function(prediction, is_click)
             loss.backward()
             self.optimizer.step()

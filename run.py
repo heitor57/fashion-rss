@@ -87,12 +87,17 @@ elif method == 'popular':
         'items_attributes': attributes_df,
     })
 elif method == 'popularitynet':
-    loss_function = loss_functions.BPRLoss(1e-3, 0.01)
+    # loss_function = loss_functions.BPRLoss(1e-3, 0.01)
     nn = neural_networks.PopularityNet(num_items)
-    nnvf = value_functions.NNVF(nn,
-                                loss_function,
-                                num_batchs=1000,
-                                batch_size=2048)
+    nnvf = value_functions.GeneralizedNNVF(neural_network=nn,
+                                 loss_function=torch.nn.BCEWithLogitsLoss(),
+                                 optimizer=torch.optim.Adam(nn.parameters(),
+                                                            lr=0.1),
+                                 epochs=200)
+    # nnvf = value_functions.NNVF(nn,
+                                # loss_function,
+                                # num_batchs=1000,
+                                # batch_size=2048)
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
 elif method == 'contextualpopularitynet':
@@ -123,10 +128,15 @@ elif method == 'contextualpopularitynet':
     nn = neural_networks.ContextualPopularityNet(num_items,
                                                  attributes_df[items_columns],
                                                  users_columns,dropout=0.0,num_layers=4)
-    nnvf = value_functions.NNVF(nn,
-                                loss_function,
-                                num_batchs=2000,
-                                batch_size=2048)
+    # nnvf = value_functions.NNVF(nn,
+                                # loss_function,
+                                # num_batchs=2000,
+                                # batch_size=2048)
+    nnvf = value_functions.GeneralizedNNVF(neural_network=nn,
+                                 loss_function=torch.nn.BCEWithLogitsLoss(),
+                                 optimizer=torch.optim.Adam(nn.parameters(),
+                                                            lr=0.0001),
+                                 epochs=20)
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
 elif method == 'ncf':

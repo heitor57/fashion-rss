@@ -126,12 +126,13 @@ class RandomVF(ValueFunction):
 
 class GeneralizedNNVF(ValueFunction):
 
-    def __init__(self, neural_network, optimizer, loss_function,epochs, *args, **kwargs):
+    def __init__(self, neural_network, optimizer, loss_function,epochs, sample_function, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.neural_network = neural_network
         self.loss_function = loss_function
         self.optimizer = optimizer
         self.epochs=  epochs
+        self.sample_function=sample_function
         # self.loss_function.set_optimizer()
 
     def train(self, dataset_):
@@ -140,14 +141,17 @@ class GeneralizedNNVF(ValueFunction):
 
         t = tqdm(range(self.epochs))
         for _ in t:
-            sampled_dataset = dataset.sample_fixed_size(
-                dataset_, len(dataset_))
-            user_id = torch.tensor(sampled_dataset.user_id.to_numpy()).int()
-            item_id = torch.tensor(sampled_dataset.product_id.to_numpy()).int()
+            sampled_dataset = self.sample_function(dataset_)
+            # sampled_dataset = dataset.sample_fixed_size(
+                # dataset_, len(dataset_))
+            user_id = torch.tensor(sampled_dataset.user_id.to_numpy()).long()
+            item_id = torch.tensor(sampled_dataset.product_id.to_numpy()).long()
             is_click = torch.tensor(sampled_dataset.is_click.to_numpy()).float()
             self.neural_network.zero_grad()
             if isinstance(self.neural_network, (neural_networks.PopularityNet)):
                 prediction = self.neural_network(item_id)
+            if isinstance(self.neural_network, (neural_networks.ContextualPopularityNet)):
+                prediction = self.neural_network(sampled_dataset,item_id)
             else:
                 prediction = self.neural_network(user_id, item_id)
             loss = self.loss_function(prediction, is_click)
@@ -159,9 +163,15 @@ class GeneralizedNNVF(ValueFunction):
 
 
     def predict(self, users, items, users_context=None):
-        users = torch.tensor(users)
-        items = torch.tensor(items)
-        v = self.neural_network(users, items)
+        users = torch.tensor(users,dtype=torch.long)
+        items = torch.tensor(items,dtype=torch.long)
+        if isinstance(self.neural_network, (neural_networks.PopularityNet)):
+            v = self.neural_network(items)
+        elif isinstance(self.neural_network,
+                        (neural_networks.ContextualPopularityNet)):
+            v = self.neural_network.forward(users_context, items)
+        else:
+            v = self.neural_network(users, items)
         return v
 
 class PopularVF(ValueFunction):

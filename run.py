@@ -1,4 +1,5 @@
 import pandas as pd
+import seaborn
 import re
 import joblib
 from torch.optim import optimizer
@@ -127,7 +128,7 @@ elif method == 'contextualpopularitynet':
     ]
     nn = neural_networks.ContextualPopularityNet(num_items,
                                                  attributes_df[items_columns],
-                                                 users_columns,dropout=0.0,num_layers=4)
+                                                 users_columns,dropout=0.1,num_layers=5)
     # nnvf = value_functions.NNVF(nn,
                                 # loss_function,
                                 # num_batchs=2000,
@@ -135,18 +136,27 @@ elif method == 'contextualpopularitynet':
     nnvf = value_functions.GeneralizedNNVF(neural_network=nn,
                                  loss_function=torch.nn.BCEWithLogitsLoss(),
                                  optimizer=torch.optim.Adam(nn.parameters(),
-                                                            lr=0.0001),
-                                 epochs=20)
+                                                            lr=0.005,weight_decay=0.0001),
+                                 epochs=2000, 
+                                 # sample_function=lambda x: dataset.sample_fixed_size(x,len(x))
+                                 sample_function=lambda x: dataset.sample_fixed_size(x,2048)
+                                 )
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
+    # plot = seaborn.heatmap(nn.hlayers[1].weight.detach().numpy())
+    # plot.figure.savefig('contextualpopularitynet_input_layer.png')
+    
 elif method == 'ncf':
     nn = neural_networks.NCF(num_users, num_items, constants.EMBEDDING_DIM, 3,
                              0.0, 'NeuMF-end')
     nnvf = value_functions.GeneralizedNNVF(neural_network=nn,
                                  loss_function=torch.nn.BCEWithLogitsLoss(),
                                  optimizer=torch.optim.Adam(nn.parameters(),
-                                                            lr=0.0001),
-                                 epochs=20)
+                                                            lr=0.001),
+                                 epochs=2000,
+                                 # sample_function=lambda x: dataset.sample_fixed_size(x,len(x))
+                                 sample_function=lambda x: dataset.sample_fixed_size(x,2048)
+                                 )
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train(train_normalized_df)
     # pickle.dump(recommender, open("data_phase1/recommender_NCF.pk", "wb"))
@@ -216,11 +226,11 @@ else:
 results = []
 product_str_ids = {v: k for k, v in product_int_ids.items()}
 query_str_ids = {v: k for k, v in query_int_ids.items()}
-input("inicio")
+# input("inicio")
 for name, group in tqdm(test_normalized_df.groupby('query_id')):
     user_teste = group['user_id'].to_numpy()[0]
-    print(group['user_id'].to_numpy()[0], group['product_id'].to_numpy())
-    input(">>")
+    # print(group['user_id'].to_numpy()[0], group['product_id'].to_numpy())
+    # input(">>")
     # print(group['user_id'].to_numpy())
     # print(group['product_id'].to_numpy())
     if method == 'contextualpopularitynet':

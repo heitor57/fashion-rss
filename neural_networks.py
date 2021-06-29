@@ -201,32 +201,12 @@ class ContextualPopularityNet(nn.Module):
     def __init__(self, num_items, items_attributes,users_columns, sparse=False,num_layers=4,dropout=0):
         super().__init__()
         self._num_items = num_items
-        # self.item_biases = ZeroEmbedding(num_items,
-                                         # 1,
-                                         # sparse=sparse,
-                                         # padding_idx=0)
-        
         self.items_attributes = torch.tensor(items_attributes.to_numpy())
-        # input_size = self.context_size+len(items_attributes.columns)
-        # if hlayers == None:
-            # hlayers= 
         item_context_size = len(items_attributes.columns)
         self.users_columns = users_columns
-        input_size = len(users_columns)+item_context_size
+        input_size = len(users_columns)+item_context_size + 1
         self.factor_num = input_size
         self.dropout = dropout
-        # print('input_size',input_size)
-        # hlayers= nn.Sequential(
-            # nn.Linear(input_size, input_size//2),
-            # nn.ReLU(),
-            # # nn.Linear(input_size//2, input_size//4),
-            # nn.Linear(input_size//2, 1),
-            # nn.ReLU(),
-            # # nn.Linear(input_size//4, input_size//8),
-            # # nn.ReLU(),
-            # # nn.Linear(input_size//8, 1),
-            # # nn.ReLU()
-        # )
         MLP_modules = []
         las = 0
         for i in range(num_layers):
@@ -241,23 +221,16 @@ class ContextualPopularityNet(nn.Module):
         self.final_function = nn.ReLU()
         # self.final_function = nn.Sigmoid()
         # self.hlayers = hlayers
+        self.item_biases = ZeroEmbedding(num_items,
+                                         1,
+                                         sparse=sparse,
+                                         padding_idx=0)
 
 
     def forward(self, users_context, items_id):
-        # print(users_context.shape)
-        # print(users_context[self.users_columns])
-        # print(users_context[self.users_columns].shape)
         users_context= torch.tensor(users_context[self.users_columns].to_numpy(dtype=np.float32))
-        # target_bias = self.item_biases(item_ids)
-        # print(users_context.shape,self.items_attributes[items_id].shape)
-        # print(
-        t = torch.cat((users_context,self.items_attributes[items_id]),1)
-        # print(t)
-        # print(t.shape)
-        # print(t[0].shape)
-        # return self.hlayers(t[0])
-        # print(t.shape)
-        return self.final_function(self.predict_layer(self.hlayers(t)))
+        t = torch.cat((self.item_biases(items_id),users_context,self.items_attributes[items_id]),1)
+        return self.final_function(self.predict_layer(self.hlayers(t))).flatten()
     def bpr_loss(self,users_context, pos, neg):
         # users_context= torch.tensor(users_context[self.users_columns].to_numpy())
         pos_scores=self.forward(users_context,pos)
@@ -295,7 +268,7 @@ class NCF(nn.Module):
 
 		MLP_modules = []
 		for i in range(num_layers):
-			input_size = factor_num
+			input_size = factor_num * (2 ** (num_layers - i))
 			MLP_modules.append(nn.Dropout(p=self.dropout))
 			MLP_modules.append(nn.Linear(input_size, input_size//2))
 			MLP_modules.append(nn.ReLU())

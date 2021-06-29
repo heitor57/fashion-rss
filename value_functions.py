@@ -269,39 +269,44 @@ class Coverage(ValueFunction):
 
 class Stacking(ValueFunction):
     
-    def __init__(self, models):
+    def __init__(self, models=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.models = models
 
     def train(self, dataset_train):
        
+        self.dataset_train = dataset_train
         self.items_values = {}
         for model_name in self.models:
             
             if model_name == "NCFVF":
-                
-                self.items_values[model_name] = np.zeros(len(dataset_train['items_attributes']))
-                self.models[model_name].train(dataset_train["train"])
-                # pickle.dump(self.models[model_name], open("model_ncf.pk", "wb"))
+                # self.models[model_name].train(dataset_train["train"])
                 self.models[model_name] = pickle.load(open("model_ncf.pk", "rb"))
-                for name, group in tqdm(dataset_train["train"].groupby('query_id')):
-                    values = self.models[model_name].value_function.predict(group['user_id'].to_numpy(),group['product_id'].to_numpy())
-                    for i, pid in enumerate(group['product_id'].to_numpy()):
-                        self.items_values[model_name][pid] = values[i]
 
             elif model_name == "PopularVF":
                 self.models[model_name].train(dataset_train)
-                self.items_values[model_name] = self.models[model_name].value_function.items_popularity
 
-        # pickle.dump(self.items_values, open("items_values.pk", "wb"))
+            i = 0
+            self.items_values[model_name] = np.zeros(len(dataset_train["train"]['product_id']))
+            for name, group in tqdm(dataset_train["train"].groupby('query_id')):
+                values = self.models[model_name].value_function.predict(group['user_id'].to_numpy(),group['product_id'].to_numpy())
+                for v in values:    
+                    self.items_values[model_name][i] = v
+                    i+=1
+
+            self.dataset_train["train"][model_name] = self.items_values[model_name]
+
+        self.lr_items = LinearRegression()
+        self.lr_items.fit(self.dataset_train["train"][["PopularVF", "NCFVF"]], self.dataset_train["train"]["is_click"])
+        print(self.lr_items.intercept_)
+        print(self.lr_items.coef_)
+        # lr_items.intercept_ + lr_items.coef_[0] * PopularVF + lr_items.coef_[1] * NCFVF
 
     def predict(self, users, items):
-        # result = []
-        # for item in items:
-        #     if item in self.coverage:
-        #         result.append(item)
-        #     else:
-        #         result.append(-99999)
-
-        # # return [self.coverage[item] for item in items] 
-        # return result 
-        pass
+        result = []
+        uid = users[0]
+        print(int(uid), uid,  self.dataset_train["train"].head())
+        for item in items:
+            x = self.dataset_train["train"].loc[(self.dataset_train["train"]["user_id"] == uid) & (self.dataset_train["train"]["product_id"] == item)]
+            result.append(self.lr_items.intercept_ + self.lr_items.coef_[0] * float(x["PopularVF"]) + self.lr_items.coef_[1] * float(x["NCFVF"]))
+        return result

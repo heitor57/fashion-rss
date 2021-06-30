@@ -18,9 +18,8 @@ import dataset
 import utils
 import argparse
 
-dataset_input_parameters = {'farfetch':{}}
-# dataset_input_parameters = {'split':{'base': {'farfetch':{}},'train_size':0.8 }}
-# dataset_input_parameters = dataset_output_parameters
+# dataset_input_parameters = {'farfetch':{}}
+dataset_input_parameters = {'split':{'base': {'farfetch':{}},'train_size':0.8 }}
 dataset_input_settings = dataset.dataset_settings_factory(dataset_input_parameters)
 
 dataset_output_parameters = {'dummies':{'base': dataset_input_parameters}}
@@ -35,7 +34,7 @@ train_df, test_df, attributes_df, user_int_ids, product_int_ids, query_int_ids =
     dataset.parquet_load(file_name=dataset_input_settings['attributes_path']))
 
 users_columns_to_dummies = [
-    'week', 'week_day',
+    # 'week', 'week_day',
     'device_category', 'device_platform',
     'user_tier',
     # 'user_country'

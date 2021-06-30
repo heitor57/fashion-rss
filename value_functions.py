@@ -1,5 +1,8 @@
 from sys import meta_path
+from collections import defaultdict
+import spotlight
 from scipy.sparse import data
+from spotlight.interactions import Interactions
 import sklearn.preprocessing
 import sklearn
 import sklearn.linear_model
@@ -351,8 +354,6 @@ class Stacking(ValueFunction):
         # print(result)
         return result
 
-import spotlight
-import spotlight.interactions
 
 class SpotlightVF(ValueFunction):
     def __init__(self, model, *args, **kwargs):
@@ -360,18 +361,34 @@ class SpotlightVF(ValueFunction):
         self.model = model
         # self.loss_function.set_optimizer()
 
-    def train(self, dataset_):
-        print(dataset_)
-        dataset_ = dataset_.loc[dataset_.is_click > 0]
-        max_sequence_length= dataset_.groupby('user_id')['product_id'].count().max()+30
-        spotlight.interactions.SequenceInteractions(
-                dataset_.user_id.to_numpy(),
-                dataset_.product_id.to_numpy(),
-                dataset_.is_click.to_numpy(),
-                dataset_.is_click.to_numpy(),
+    def train(self, dataset):
+        train = dataset['train'].copy()
+        train = train.loc[train.is_click > 0]
+        max_sequence_length= train.groupby('user_id')['product_id'].count().max()+30
+        print('max_sequence_length',max_sequence_length)
+        # print(train.columns)
+        # print(train['week_day'])
+        interactions = Interactions(
+                train.user_id.to_numpy(),
+                train.product_id.to_numpy()+1,
+                timestamps=(train.week*train.week_day).to_numpy(),
+                num_users=dataset['num_users'],
+                num_items=dataset['num_items'],
                 )
+        train['time'] = train.week*train.week_day
+        def _f(items,max_sequence_length):
+            x = np.zeros(max_sequence_length)
+            for i, item in enumerate(items):
+                x[max_sequence_length-len(items)+i] = item+1
+            return torch.tensor(x)
+        self.users_sequences = train.sort_values(['user_id','time']).groupby('user_id')['product_id'].agg(lambda x: _f(x,max_sequence_length)).to_dict()
+        self.users_sequences = defaultdict(lambda: torch.zeros(max_sequence_length), self.users_sequences)
+        sequence_interactions= interactions.to_sequence(max_sequence_length=max_sequence_length)
+        self.model.fit(sequence_interactions)
 
     def predict(self, users, items, users_context=None):
-        users = torch.tensor(users,dtype=torch.long)
-        items = torch.tensor(items,dtype=torch.long)
-        return v.detach().numpy()
+        items = torch.tensor(items,dtype=torch.long)+1
+        # users = torch.tensor(users,dtype=torch.long)
+        sequences = torch.tensor([self.users_sequences[u] for u in users])
+        v=self.model.predict(sequences,items_ids=items)
+        return v

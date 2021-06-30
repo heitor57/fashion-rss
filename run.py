@@ -1,5 +1,7 @@
 import pandas as pd
+import spotlight
 import sklearn.neural_network
+from spotlight.sequence.implicit import ImplicitSequenceModel
 import seaborn
 import re
 import joblib
@@ -90,9 +92,13 @@ elif method == 'popular':
     })
 elif method == 'spotlight':
     # nn = neural_networks.LSTMNet(num_items=num_items, embedding_dim=constants.EMBEDDING_DIM)
-    nnvf = value_functions.SpotlightVF()
+    nnvf = value_functions.SpotlightVF(ImplicitSequenceModel(embedding_dim=10))
     recommender = recommenders.NNRecommender(nnvf, name=method)
-    recommender.train(train_normalized_df)
+    recommender.train({
+        'train': train_normalized_df,
+        'num_items': num_items,
+        'num_users': num_users,
+        })
 elif method == 'lstm':
     nn = neural_networks.LSTMNet(num_items=num_items, embedding_dim=constants.EMBEDDING_DIM)
     nnvf = value_functions.GeneralizedNNVF(neural_network=nn,

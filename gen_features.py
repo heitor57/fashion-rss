@@ -29,11 +29,6 @@ for index, user_id in tqdm(enumerate(user_ids), position=0, leave=True):
         user_features["observed_items"][index] = len(train_dict[user_id]["user_id"])
         user_features["num_sessions"][index] = len(train_dict[user_id]["session_id"].unique())
         user_features["mean_price"][index] = train_dict[user_id].loc[(train_dict[user_id].is_click == 1)]["product_price"].mean()
-    else:
-        user_features["items_clicked"][index] = 0
-        user_features["observed_items"][index] = 0
-        user_features["num_sessions"][index] = 0
-        user_features["mean_price"][index] = 0
-
+   
 df_user_features = pd.DataFrame(user_features)
 df_user_features.to_csv("df_user_features.csv")

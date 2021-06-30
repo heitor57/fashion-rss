@@ -147,22 +147,37 @@ class GeneralizedNNVF(ValueFunction):
     def train(self, dataset_):
         print(dataset_)
         dataset_ = dataset_.loc[dataset_.is_click > 0]
+        if isinstance(self.neural_network, (neural_networks.LSTMNet)):
+            self.users_items_sequences = dataset_.groupby('user_id')['product_id'].agg(lambda x: np.array(list(x))).to_dict()
+            self.users_items_sequences = {k: torch.tensor(v,dtype=torch.long) for k, v in self.users_items_sequences.items()}
+            dataset_ = dataset_[['user_id']].drop_duplicates()
+            # print(list(self.users_items_sequences.values())[0])
 
         t = tqdm(range(self.epochs))
         for _ in t:
             sampled_dataset = self.sample_function(dataset_)
-            # sampled_dataset = dataset.sample_fixed_size(
-                # dataset_, len(dataset_))
-            user_id = torch.tensor(sampled_dataset.user_id.to_numpy()).long()
-            item_id = torch.tensor(sampled_dataset.product_id.to_numpy()).long()
-            is_click = torch.tensor(sampled_dataset.is_click.to_numpy()).float()
+            if not isinstance(self.neural_network,neural_networks.LSTMNet):
+                users = torch.tensor(sampled_dataset.user_id.to_numpy()).long()
+                items = torch.tensor(sampled_dataset.product_id.to_numpy()).long()
+                is_click = torch.tensor(sampled_dataset.is_click.to_numpy()).float()
             self.neural_network.zero_grad()
             if isinstance(self.neural_network, (neural_networks.PopularityNet)):
-                prediction = self.neural_network(item_id)
-            if isinstance(self.neural_network, (neural_networks.ContextualPopularityNet)):
-                prediction = self.neural_network(sampled_dataset,item_id)
+                prediction = self.neural_network(items)
+            elif isinstance(self.neural_network, (neural_networks.ContextualPopularityNet)):
+                prediction = self.neural_network(sampled_dataset,items)
+            elif isinstance(self.neural_network, (neural_networks.LSTMNet)):
+                predictions = []
+                # for name, group in sampled_dataset.groupby('user_id')['product_id'].agg(lambda x: torch.tensor(np.array(x))):
+                # items_sequences=[self.users_items_sequences[i] for i in sampled_dataset.user_id]
+                for i in sampled_dataset.user_id:
+                    items_sequences = self.users_items_sequences[i]
+                    # print(items_sequences.shape)
+                    user_representation, _ = self.neural_network.user_representation(items_sequences)
+                    prediction = self.neural_network(user_representation,items_sequences)
+                    predictions.append(prediction)
+                prediction = torch.tensor(predictions)
             else:
-                prediction = self.neural_network(user_id, item_id)
+                prediction = self.neural_network(users, items)
             loss = self.loss_function(prediction, is_click)
             loss.backward()
             self.optimizer.step()
@@ -179,6 +194,10 @@ class GeneralizedNNVF(ValueFunction):
         elif isinstance(self.neural_network,
                         (neural_networks.ContextualPopularityNet)):
             v = self.neural_network.forward(users_context, items)
+        elif isinstance(self.neural_network,
+                        (neural_networks.LSTMNet)):
+            items_sequences=torch.tensor(np.array([self.users_items_sequences[i] for i in users]))
+            v = self.neural_network(items_sequences,items)
         else:
             v = self.neural_network(users, items)
         return v.detach().numpy()
@@ -331,3 +350,28 @@ class Stacking(ValueFunction):
         result= self.meta_learner.predict(features)
         # print(result)
         return result
+
+import spotlight
+import spotlight.interactions
+
+class SpotlightVF(ValueFunction):
+    def __init__(self, model, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.model = model
+        # self.loss_function.set_optimizer()
+
+    def train(self, dataset_):
+        print(dataset_)
+        dataset_ = dataset_.loc[dataset_.is_click > 0]
+        max_sequence_length= dataset_.groupby('user_id')['product_id'].count().max()+30
+        spotlight.interactions.SequenceInteractions(
+                dataset_.user_id.to_numpy(),
+                dataset_.product_id.to_numpy(),
+                dataset_.is_click.to_numpy(),
+                dataset_.is_click.to_numpy(),
+                )
+
+    def predict(self, users, items, users_context=None):
+        users = torch.tensor(users,dtype=torch.long)
+        items = torch.tensor(items,dtype=torch.long)
+        return v.detach().numpy()

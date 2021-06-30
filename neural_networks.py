@@ -110,34 +110,58 @@ class BilinearNet(nn.Module):
 
 class LSTMNet(nn.Module):
 
-    def __init__(self, num_items, embedding_dim, sparse=False):
-        super().__init__()
+    def __init__(self, num_items, embedding_dim,
+                 item_embedding_layer=None, sparse=False):
+
+        super(LSTMNet, self).__init__()
 
         self.embedding_dim = embedding_dim
 
-        self.item_embeddings = ScaledEmbedding(num_items,
-                                               embedding_dim,
-                                               sparse=sparse,
-                                               padding_idx=0)
-        self.item_biases = ZeroEmbedding(num_items,
-                                         1,
-                                         sparse=sparse,
+        if item_embedding_layer is not None:
+            self.item_embeddings = item_embedding_layer
+        else:
+            self.item_embeddings = ScaledEmbedding(num_items, embedding_dim,
+                                                   padding_idx=0,
+                                                   sparse=sparse)
+
+        self.item_biases = ZeroEmbedding(num_items, 1, sparse=sparse,
                                          padding_idx=0)
 
         self.lstm = nn.LSTM(batch_first=True,
                             input_size=embedding_dim,
                             hidden_size=embedding_dim)
 
-    def forward(self, item_sequences, item_ids):
+    def user_representation(self, item_sequences):
 
-        target_embedding = self.item_embeddings(item_ids)
-        user_representations, _ = self.lstm(
-            self.item_embeddings(item_sequences))
-        target_bias = self.item_biases(item_ids)
+        # Make the embedding dimension the channel dimension
+        sequence_embeddings = (self.item_embeddings(item_sequences)
+                               .permute(0, 2, 1))
+        # Add a trailing dimension of 1
+        sequence_embeddings = (sequence_embeddings
+                               .unsqueeze(3))
+        # Pad it with zeros from left
+        sequence_embeddings = (F.pad(sequence_embeddings,
+                                     (0, 0, 1, 0))
+                               .squeeze(3))
+        sequence_embeddings = sequence_embeddings.permute(0, 2, 1)
 
-        dot = (user_representations * target_embedding).sum(2)
+        user_representations, _ = self.lstm(sequence_embeddings)
+        user_representations = user_representations.permute(0, 2, 1)
 
-        return dot + target_bias
+        return user_representations[:, :, :-1], user_representations[:, :, -1]
+
+    def forward(self, user_representations, items):
+
+        target_embedding = (self.item_embeddings(items)
+                            .permute(0, 2, 1)
+                            .squeeze())
+        target_bias = self.item_biases(items).squeeze()
+
+        dot = ((user_representations * target_embedding)
+               .sum(1)
+               .squeeze())
+
+        return target_bias + dot
 
 
 class PoolNet(nn.Module):

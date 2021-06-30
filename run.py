@@ -88,6 +88,23 @@ elif method == 'popular':
         'train': train_normalized_df,
         'items_attributes': attributes_df,
     })
+elif method == 'spotlight':
+    # nn = neural_networks.LSTMNet(num_items=num_items, embedding_dim=constants.EMBEDDING_DIM)
+    nnvf = value_functions.SpotlightVF()
+    recommender = recommenders.NNRecommender(nnvf, name=method)
+    recommender.train(train_normalized_df)
+elif method == 'lstm':
+    nn = neural_networks.LSTMNet(num_items=num_items, embedding_dim=constants.EMBEDDING_DIM)
+    nnvf = value_functions.GeneralizedNNVF(neural_network=nn,
+                                 loss_function=torch.nn.BCEWithLogitsLoss(),
+                                 optimizer=torch.optim.Adam(nn.parameters(),
+                                                            lr=0.0001),
+                                 epochs=100,
+                                 sample_function=lambda x: dataset.sample_fixed_size(x,5000)
+                                 # sample_function=lambda x: dataset.sample_fixed_size(x,100000)
+                                 )
+    recommender = recommenders.NNRecommender(nnvf, name=method)
+    recommender.train(train_normalized_df)
 elif method == 'popularitynet':
     # loss_function = loss_functions.BPRLoss(1e-3, 0.01)
     nn = neural_networks.PopularityNet(num_items)

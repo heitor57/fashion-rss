@@ -1,4 +1,6 @@
 from scipy.sparse import data
+import sklearn
+import sklearn.linear_model
 import dataset
 import torch
 import scipy.sparse.linalg
@@ -12,14 +14,19 @@ import pickle
 
 class ValueFunction:
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self,name=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if name == None:
+            self.name=self._get_name()
 
     def train(self, dataset_):
         raise NotImplementedError
 
     def predict(self, targets):
         raise NotImplementedError
+
+    def _get_name(self):
+        return self.__class__.__name__
 
 
 class NNVF(ValueFunction):
@@ -172,7 +179,7 @@ class GeneralizedNNVF(ValueFunction):
             v = self.neural_network.forward(users_context, items)
         else:
             v = self.neural_network(users, items)
-        return v
+        return v.detach().numpy()
 
 class PopularVF(ValueFunction):
 
@@ -183,8 +190,10 @@ class PopularVF(ValueFunction):
         
         self.items_popularity = np.zeros(len(dataset_['items_attributes']))
         train = dataset_['train']
-        for user_id, product_id in tqdm(train.loc[train.is_click>0].iterrows()):
-            self.items_popularity[product_id['product_id']] +=1
+        for index,row in train.loc[train.is_click>0].groupby('product_id').count().reset_index().iterrows():
+            self.items_popularity[row['product_id']] += row['user_id']
+        # for user_id, product_id in tqdm(train.loc[train.is_click>0].iterrows()):
+            # self.items_popularity[product_id['product_id']] +=1
         # for user_id, product_id in tqdm(train.loc[train.is_click>0].groupby(['user_id','product_id']).count().reset_index()[['user_id','product_id']].iterrows()):
             # self.items_popularity[product_id['product_id']] +=1
         pass
@@ -273,40 +282,44 @@ class Stacking(ValueFunction):
         super().__init__(*args, **kwargs)
         self.models = models
 
-    def train(self, dataset_train):
+    def train(self, dataset):
        
-        self.dataset_train = dataset_train
-        self.items_values = {}
-        for model_name in self.models:
+        # self.dataset = dataset
+        items_values = {}
+        for i, model in enumerate(self.models):
             
-            if model_name == "NCFVF":
-                # self.models[model_name].train(dataset_train["train"])
-                self.models[model_name] = pickle.load(open("model_ncf.pk", "rb"))
-
-            elif model_name == "PopularVF":
-                self.models[model_name].train(dataset_train)
+            if isinstance(model,GeneralizedNNVF):
+                model.train(dataset["train"])
+                # self.models[model_name] = pickle.load(open("model_ncf.pk", "rb"))
+            elif isinstance(model,PopularVF):
+                model.train(dataset)
 
             i = 0
-            self.items_values[model_name] = np.zeros(len(dataset_train["train"]['product_id']))
-            for name, group in tqdm(dataset_train["train"].groupby('query_id')):
-                values = self.models[model_name].value_function.predict(group['user_id'].to_numpy(),group['product_id'].to_numpy())
+            items_values[model.name] = np.zeros(len(dataset["train"]['product_id']))
+            for name, group in tqdm(dataset["train"].groupby('query_id')):
+                values = model.predict(group['user_id'].to_numpy(),group['product_id'].to_numpy())
                 for v in values:    
-                    self.items_values[model_name][i] = v
+                    items_values[model.name][i] = v
                     i+=1
 
-            self.dataset_train["train"][model_name] = self.items_values[model_name]
+            dataset["train"][model.name] = items_values[model.name]
 
-        self.lr_items = LinearRegression()
-        self.lr_items.fit(self.dataset_train["train"][["PopularVF", "NCFVF"]], self.dataset_train["train"]["is_click"])
+        self.lr_items = sklearn.linear_model.LinearRegression()
+        self.lr_items.fit(dataset["train"][[i.name for i in self.models]], dataset["train"]["is_click"])
         print(self.lr_items.intercept_)
         print(self.lr_items.coef_)
         # lr_items.intercept_ + lr_items.coef_[0] * PopularVF + lr_items.coef_[1] * NCFVF
 
     def predict(self, users, items):
         result = []
-        uid = users[0]
-        print(int(uid), uid,  self.dataset_train["train"].head())
-        for item in items:
-            x = self.dataset_train["train"].loc[(self.dataset_train["train"]["user_id"] == uid) & (self.dataset_train["train"]["product_id"] == item)]
-            result.append(self.lr_items.intercept_ + self.lr_items.coef_[0] * float(x["PopularVF"]) + self.lr_items.coef_[1] * float(x["NCFVF"]))
+        models_values = []
+        for model in self.models:
+            values = model.predict(users,items)
+            models_values.append(values)
+
+        models_values = np.array(models_values).T
+        features = models_values
+        # print(features)
+        # print(features.shape)
+        result= self.lr_items.predict(features)
         return result

@@ -94,6 +94,7 @@ elif method == 'popularitynet':
                                  loss_function=torch.nn.BCEWithLogitsLoss(),
                                  optimizer=torch.optim.Adam(nn.parameters(),
                                                             lr=0.1),
+                                 sample_function=lambda x: dataset.sample_fixed_size(x,len(x)),
                                  epochs=200)
     # nnvf = value_functions.NNVF(nn,
                                 # loss_function,
@@ -200,21 +201,23 @@ elif method == 'lightgcn':
 elif method == 'stacking':
 
     vf = value_functions.PopularVF()
-    recommender_PopularVF = recommenders.SimpleRecommender(vf, name=method)
+    PopularVF = vf
 
     nn = neural_networks.NCF(num_users, num_items, constants.EMBEDDING_DIM, 3,
                              0.0, 'NeuMF-end')
-    nnvf = value_functions.GeneralizedNNVF(neural_network=nn,
+    NCFVF = value_functions.GeneralizedNNVF(neural_network=nn,
                                  loss_function=torch.nn.BCEWithLogitsLoss(),
                                  optimizer=torch.optim.Adam(nn.parameters(),
-                                                            lr=0.0001),
-                                 epochs=20)
+                                                            lr=0.001),
+                                 sample_function=lambda x: dataset.sample_fixed_size(x,len(x)),
+                                 epochs=100)
 
-    recommender_NCF = recommenders.NNRecommender(nnvf, name=method)
+     
     
-    models = {'PopularVF': recommender_PopularVF, 'NCFVF': recommender_NCF}
+    models = [PopularVF,NCFVF]
+    vf = value_functions.Stacking(models=models)
+    recommender = recommenders.SimpleRecommender(value_function=vf,name=method)
 
-    recommender = value_functions.Stacking(models=models)
     recommender.train({
         'train': train_normalized_df,
         'items_attributes': attributes_df,

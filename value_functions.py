@@ -1,4 +1,6 @@
+from sys import meta_path
 from scipy.sparse import data
+import sklearn.preprocessing
 import sklearn
 import sklearn.linear_model
 import dataset
@@ -278,14 +280,15 @@ class Coverage(ValueFunction):
 
 class Stacking(ValueFunction):
     
-    def __init__(self, models=None, *args, **kwargs):
+    def __init__(self, models=None,meta_learner=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.models = models
+        self.meta_learner = meta_learner
 
     def train(self, dataset):
        
         # self.dataset = dataset
-        items_values = {}
+        items_values = []
         for i, model in enumerate(self.models):
             
             if isinstance(model,GeneralizedNNVF):
@@ -295,19 +298,22 @@ class Stacking(ValueFunction):
                 model.train(dataset)
 
             i = 0
-            items_values[model.name] = np.zeros(len(dataset["train"]['product_id']))
+            items_value = np.zeros(len(dataset["train"]['product_id']))
             for name, group in tqdm(dataset["train"].groupby('query_id')):
                 values = model.predict(group['user_id'].to_numpy(),group['product_id'].to_numpy())
                 for v in values:    
-                    items_values[model.name][i] = v
+                    items_value[i] = v
                     i+=1
+            items_values.append(items_value)
+        items_values = np.array(items_values).T
+        features = sklearn.preprocessing.StandardScaler().fit_transform(items_values)
+            # dataset["train"][model.name] = items_values[model.name]
 
-            dataset["train"][model.name] = items_values[model.name]
-
-        self.lr_items = sklearn.linear_model.LinearRegression()
-        self.lr_items.fit(dataset["train"][[i.name for i in self.models]], dataset["train"]["is_click"])
-        print(self.lr_items.intercept_)
-        print(self.lr_items.coef_)
+        # self.lr_items = sklearn.linear_model.LogisticRegression()
+        # self.meta_learner = sklearn.linear_model.LinearRegression()
+        self.meta_learner.fit(features, dataset["train"]["is_click"])
+        print(self.meta_learner.intercept_)
+        print(self.meta_learner.coef_)
         # lr_items.intercept_ + lr_items.coef_[0] * PopularVF + lr_items.coef_[1] * NCFVF
 
     def predict(self, users, items):
@@ -318,8 +324,10 @@ class Stacking(ValueFunction):
             models_values.append(values)
 
         models_values = np.array(models_values).T
-        features = models_values
+        features = sklearn.preprocessing.StandardScaler().fit_transform(models_values)
+        # features = models_values
         # print(features)
         # print(features.shape)
-        result= self.lr_items.predict(features)
+        result= self.meta_learner.predict(features)
+        # print(result)
         return result

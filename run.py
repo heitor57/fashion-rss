@@ -92,7 +92,21 @@ elif method == 'popular':
     })
 elif method == 'spotlight':
     # nn = neural_networks.LSTMNet(num_items=num_items, embedding_dim=constants.EMBEDDING_DIM)
-    nnvf = value_functions.SpotlightVF(ImplicitSequenceModel(embedding_dim=10))
+    nnvf = value_functions.SpotlightVF(ImplicitSequenceModel(
+        loss='bpr',
+                 representation='cnn',
+                 embedding_dim=32,
+                 n_iter=30,
+                 batch_size=1024,
+                 l2=0.0,
+                 learning_rate=1e-2,
+                 optimizer_func=None,
+                 use_cuda=True,
+                 sparse=False,
+                 random_state=None,
+                 num_negative_samples=5
+
+        ))
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train({
         'train': train_normalized_df,

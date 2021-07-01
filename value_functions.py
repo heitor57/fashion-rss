@@ -119,7 +119,7 @@ class NNVF(ValueFunction):
             v = self.neural_network.forward(users, items)
 
         # print(v)
-        return v
+        return v.detach().numpy().flatten()
         # raise NotImplementedError
 
 
@@ -364,8 +364,8 @@ class SpotlightVF(ValueFunction):
     def train(self, dataset):
         train = dataset['train'].copy()
         train = train.loc[train.is_click > 0]
-        max_sequence_length= train.groupby('user_id')['product_id'].count().max()+30
-        print('max_sequence_length',max_sequence_length)
+        self.max_sequence_length= train.groupby('user_id')['product_id'].count().max()+30
+        print('max_sequence_length',self.max_sequence_length)
         # print(train.columns)
         # print(train['week_day'])
         interactions = Interactions(
@@ -381,14 +381,25 @@ class SpotlightVF(ValueFunction):
             for i, item in enumerate(items):
                 x[max_sequence_length-len(items)+i] = item+1
             return torch.tensor(x)
-        self.users_sequences = train.sort_values(['user_id','time']).groupby('user_id')['product_id'].agg(lambda x: _f(x,max_sequence_length)).to_dict()
-        self.users_sequences = defaultdict(lambda: torch.zeros(max_sequence_length), self.users_sequences)
-        sequence_interactions= interactions.to_sequence(max_sequence_length=max_sequence_length)
-        self.model.fit(sequence_interactions)
+        self.users_sequences = train.sort_values(['user_id','time']).groupby('user_id')['product_id'].agg(lambda x: _f(x,self.max_sequence_length)).to_dict()
+        self.users_sequences = defaultdict(lambda: np.zeros(self.max_sequence_length), self.users_sequences)
+        sequence_interactions= interactions.to_sequence(max_sequence_length=self.max_sequence_length)
+        self.model.fit(sequence_interactions,verbose=True)
 
     def predict(self, users, items, users_context=None):
-        items = torch.tensor(items,dtype=torch.long)+1
+        # items = torch.tensor(items,dtype=torch.long)+1
         # users = torch.tensor(users,dtype=torch.long)
-        sequences = torch.tensor([self.users_sequences[u] for u in users])
-        v=self.model.predict(sequences,items_ids=items)
+        # t= [self.users_sequences[u].transpose(-1,0) for u in users]
+        user = users[0]
+        # sequences = torch.cat(t)
+        sequences = self.users_sequences[user]
+        # print(sequences)
+        # print(self.users_sequences[user])
+        # print(self.users_sequences[user].shape)
+        # x = np.zeros(self.max_sequence_length)
+        # for i, item in enumerate(items):
+            # x[self.max_sequence_length-len(items)+i] = item+1
+        # v=self.model.predict(sequences ,item_ids=items+1)
+        # print(items)
+        v=self.model.predict(sequences,item_ids=items.reshape(-1,1))
         return v

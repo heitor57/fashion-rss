@@ -383,7 +383,8 @@ class SpotlightVF(ValueFunction):
             return torch.tensor(x)
         self.users_sequences = train.sort_values(['user_id','time']).groupby('user_id')['product_id'].agg(lambda x: _f(x,self.max_sequence_length)).to_dict()
         self.users_sequences = defaultdict(lambda: np.zeros(self.max_sequence_length), self.users_sequences)
-        sequence_interactions= interactions.to_sequence(max_sequence_length=self.max_sequence_length)
+        # sequence_interactions= interactions.to_sequence(max_sequence_length=self.max_sequence_length)
+        sequence_interactions= interactions.to_sequence(max_sequence_length=self.max_sequence_length,step_size=100)
         self.model.fit(sequence_interactions,verbose=True)
 
     def predict(self, users, items, users_context=None):

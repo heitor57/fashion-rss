@@ -23,6 +23,29 @@ import argparse
 import pickle
 from concurrent.futures import ProcessPoolExecutor
 import multiprocessing
+
+def run(group):
+
+    results = []
+    if method == 'contextualpopularitynet':
+        users, items = recommender.recommend(group['user_id'].to_numpy(),
+                                             group['product_id'].to_numpy(),
+                                             users_context=group[users_columns])
+    else:
+        users, items = recommender.recommend(group['user_id'].to_numpy(),
+                                             group['product_id'].to_numpy())
+    user_id = group['user_id'].iloc[0]
+    group = group.set_index('user_id')
+    query_id = group['query_id'].iloc[0]
+
+    j = 1
+    for i in items:
+        results.append([query_str_ids[query_id], product_str_ids[i], j])
+        j += 1
+    
+    return results
+
+
 # dataset_input_parameters = {'dummies': 
         # {
         # 'base': {'farfetch': {}},
@@ -95,9 +118,9 @@ elif method == 'spotlight':
     # nn = neural_networks.LSTMNet(num_items=num_items, embedding_dim=constants.EMBEDDING_DIM)
     nnvf = value_functions.SpotlightVF(ImplicitSequenceModel(
         loss='bpr',
-                 representation='cnn',
+                 representation='pooling',
                  embedding_dim=32,
-                 n_iter=30,
+                 n_iter=1000,
                  batch_size=1024,
                  l2=0.0,
                  learning_rate=1e-2,
@@ -268,12 +291,21 @@ else:
     raise SystemError
 
 results = []
-product_str_ids = {v: k for k, v in product_int_ids.items()}
-query_str_ids = {v: k for k, v in query_int_ids.items()}
+# product_str_ids = {v: k for k, v in product_int_ids.items()}
+# query_str_ids = {v: k for k, v in query_int_ids.items()}
 
-def run(group):
 
-    results = []
+# groups = [group for name, group in tqdm(test_normalized_df.groupby('query_id'))]
+# executor = ProcessPoolExecutor()
+# num_args = len(groups)
+# chunksize = int(num_args/multiprocessing.cpu_count())
+
+# print("Starting recommender...")
+# for i in tqdm(executor.map(run, groups),total=num_args):
+    # results += i 
+
+
+for name, group in tqdm(test_normalized_df.groupby('query_id')):
     if method == 'contextualpopularitynet':
         users, items = recommender.recommend(group['user_id'].to_numpy(),
                                              group['product_id'].to_numpy(),
@@ -284,48 +316,10 @@ def run(group):
     user_id = group['user_id'].iloc[0]
     group = group.set_index('user_id')
     query_id = group['query_id'].iloc[0]
-
     j = 1
     for i in items:
         results.append([query_str_ids[query_id], product_str_ids[i], j])
         j += 1
-    
-    return results
-
-groups = [group for name, group in tqdm(test_normalized_df.groupby('query_id'))]
-executor = ProcessPoolExecutor()
-num_args = len(groups)
-chunksize = int(num_args/multiprocessing.cpu_count())
-
-print("Starting recommender...")
-for i in tqdm(executor.map(run, groups),total=num_args):
-    results += i 
-
-
-# for name, group in tqdm(test_normalized_df.groupby('query_id')):
-#     user_teste = group['user_id'].to_numpy()[0]
-#     # print(group['user_id'].to_numpy()[0], group['product_id'].to_numpy())
-#     # input(">>")
-#     # print(group['user_id'].to_numpy())
-#     # print(group['product_id'].to_numpy())
-#     if method == 'contextualpopularitynet':
-#         users, items = recommender.recommend(group['user_id'].to_numpy(),
-#                                              group['product_id'].to_numpy(),
-#                                              users_context=group[users_columns])
-#     else:
-#         users, items = recommender.recommend(group['user_id'].to_numpy(),
-#                                              group['product_id'].to_numpy())
-#     user_id = group['user_id'].iloc[0]
-#     group = group.set_index('user_id')
-#     query_id = group['query_id'].iloc[0]
-#     j = 1
-#     # print(items)
-#     for i in items:
-#         # print(i)
-#         results.append([query_str_ids[query_id], product_str_ids[i], j])
-#         j += 1
-#     # recommender.recommend()
-
 
 results_df = pd.DataFrame(results, columns=['query_id', 'product_id', 'rank'])
 results_df.to_csv(

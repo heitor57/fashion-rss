@@ -213,6 +213,8 @@ class GeneralizedNNVF(ValueFunction):
             t.set_description(f'{loss}')
             t.refresh()
 
+        self.neural_network.embed_user_MLP
+
 
     def predict(self, users, items, users_context=None):
         users = torch.tensor(users,dtype=torch.long)
@@ -341,7 +343,7 @@ class Stacking(ValueFunction):
             print('training model',model)
             
             if isinstance(model,GeneralizedNNVF):
-                model.train(dataset["train"])
+                model.train(dataset)
                 # self.models[model_name] = pickle.load(open("model_ncf.pk", "rb"))
             elif isinstance(model,PopularVF):
                 model.train(dataset)
@@ -379,11 +381,11 @@ class Stacking(ValueFunction):
             if user_id in train_dict:
                 user_features["items_clicked"][index] = len(train_dict[user_id].loc[(train_dict[user_id].is_click == 1)]["product_id"])
                 user_features["observed_items"][index] = len(train_dict[user_id]["user_id"])
-                user_features["num_sessions"][index] = len(train_dict[user_id]["session_id"].unique())
+                user_features["num_sessions"][index] = train_dict[user_id]["session_id"].nunique()
                 user_features["mean_price"][index] = train_dict[user_id].loc[(train_dict[user_id].is_click == 1)]["product_price"].mean()
            
         df_user_features = pd.DataFrame(user_features)
-        self.users_features = df_user_features.set_index('user_id').to_dict()
+        self.users_features = df_user_features.set_index('uid').to_dict()
         d = {
             'items_clicked':0,
             'observed_items':0,
@@ -400,8 +402,8 @@ class Stacking(ValueFunction):
         # self.lr_items = sklearn.linear_model.LogisticRegression()
         # self.meta_learner = sklearn.linear_model.LinearRegression()
         self.meta_learner.fit(features, dataset["train"]["is_click"])
-        print(self.meta_learner.intercept_)
-        print(self.meta_learner.coef_)
+        # print(self.meta_learner.intercept_)
+        # print(self.meta_learner.coef_)
         # lr_items.intercept_ + lr_items.coef_[0] * PopularVF + lr_items.coef_[1] * NCFVF
 
     def predict(self, users, items):
@@ -416,6 +418,10 @@ class Stacking(ValueFunction):
         # features = models_values
         # print(features)
         # print(features.shape)
+        user_features = pd.DataFrame([self.users_features[i]  for i in users]).to_numpy()
+        features = np.hstack([features,user_features])
+        # print(features)
+        # print(features)
         result= self.meta_learner.predict(features)
         # print(result)
         return result

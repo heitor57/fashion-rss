@@ -209,16 +209,16 @@ elif method == 'contextualpopularitynet':
     # plot.figure.savefig('contextualpopularitynet_input_layer.png')
     
 elif method == 'ncf':
-    nn = neural_networks.NCF(num_users, num_items, constants.EMBEDDING_DIM, 3,
-                             0.2, 'NeuMF-end')
+    nn = neural_networks.NCF(num_users, num_items, constants.EMBEDDING_DIM, 4,
+                             0.0, 'NeuMF-end')
     nnvf = value_functions.GeneralizedNNVF(neural_network=nn,
                                  loss_function=torch.nn.BCEWithLogitsLoss(),
                                  optimizer=torch.optim.Adam(nn.parameters(),
-                                                            lr=0.04),
-                                 epochs=200,
-                                 sample_function=lambda x: dataset.sample_fixed_size(x,len(x)//2),
+                                                            lr=0.01),
+                                 epochs=60,
+                                 sample_function=lambda x: dataset.sample_fixed_size(x,len(x)//10),
                                  # sample_function=lambda x: dataset.sample_fixed_size(x,100000),
-                                 num_negatives=4,
+                                 num_negatives=10,
                                  )
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train({
@@ -269,15 +269,17 @@ elif method == 'stacking':
     vf = value_functions.PopularVF()
     PopularVF = vf
 
-    nn = neural_networks.NCF(num_users, num_items, constants.EMBEDDING_DIM, 3,
+    nn = neural_networks.NCF(num_users, num_items, constants.EMBEDDING_DIM, 4,
                              0.0, 'NeuMF-end')
     NCFVF = value_functions.GeneralizedNNVF(neural_network=nn,
                                  loss_function=torch.nn.BCEWithLogitsLoss(),
                                  optimizer=torch.optim.Adam(nn.parameters(),
-                                                            lr=0.001),
-                                 sample_function=lambda x: dataset.sample_fixed_size(x,len(x)),
-                                 epochs=1)
-
+                                                            lr=0.01),
+                                 epochs=60,
+                                 # epochs=1,
+                                 sample_function=lambda x: dataset.sample_fixed_size(x,len(x)//10),
+                                 num_negatives=10,
+                                 )
      
     
     models = [PopularVF,NCFVF]
@@ -289,6 +291,8 @@ elif method == 'stacking':
     recommender.train({
         'train': train_normalized_df,
         'items_attributes': attributes_df,
+        'num_users': num_users,
+        'num_items': num_items,
     })
 
 else:

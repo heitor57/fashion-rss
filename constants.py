@@ -4,7 +4,7 @@ RANDOM_SEED = 1
 
 # negative_samples_file = 'data_phase1/data/negative_samples_file.parquet'
 
-EMBEDDING_DIM = 50
+EMBEDDING_DIM = 32
 
 source_dataset_settings = {
     # 'rate': constants.RATE,

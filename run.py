@@ -120,7 +120,7 @@ elif method == 'spotlight':
         loss='bpr',
                  representation='pooling',
                  embedding_dim=32,
-                 n_iter=1000,
+                 n_iter=20,
                  batch_size=1024,
                  l2=0.0,
                  learning_rate=1e-2,
@@ -129,7 +129,6 @@ elif method == 'spotlight':
                  sparse=False,
                  random_state=None,
                  num_negative_samples=5
-
         ))
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train({
@@ -211,17 +210,22 @@ elif method == 'contextualpopularitynet':
     
 elif method == 'ncf':
     nn = neural_networks.NCF(num_users, num_items, constants.EMBEDDING_DIM, 3,
-                             0.0, 'NeuMF-end')
+                             0.2, 'NeuMF-end')
     nnvf = value_functions.GeneralizedNNVF(neural_network=nn,
                                  loss_function=torch.nn.BCEWithLogitsLoss(),
                                  optimizer=torch.optim.Adam(nn.parameters(),
-                                                            lr=0.0001),
-                                 epochs=100,
-                                 sample_function=lambda x: dataset.sample_fixed_size(x,len(x))
-                                 # sample_function=lambda x: dataset.sample_fixed_size(x,100000)
+                                                            lr=0.04),
+                                 epochs=200,
+                                 sample_function=lambda x: dataset.sample_fixed_size(x,len(x)//2),
+                                 # sample_function=lambda x: dataset.sample_fixed_size(x,100000),
+                                 num_negatives=4,
                                  )
     recommender = recommenders.NNRecommender(nnvf, name=method)
-    recommender.train(train_normalized_df)
+    recommender.train({
+        'train': train_normalized_df,
+        'num_users': num_users,
+        'num_items': num_items,
+    })
     # pickle.dump(recommender, open("data_phase1/recommender_NCF.pk", "wb"))
     # recommender = pickle.load(open("data_phase1/recommender_NCF.pk", "rb"))
 
@@ -291,8 +295,8 @@ else:
     raise SystemError
 
 results = []
-# product_str_ids = {v: k for k, v in product_int_ids.items()}
-# query_str_ids = {v: k for k, v in query_int_ids.items()}
+product_str_ids = {v: k for k, v in product_int_ids.items()}
+query_str_ids = {v: k for k, v in query_int_ids.items()}
 
 
 # groups = [group for name, group in tqdm(test_normalized_df.groupby('query_id'))]

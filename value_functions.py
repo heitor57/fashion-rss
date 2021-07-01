@@ -1,7 +1,10 @@
 from sys import meta_path
+import random
+import copy
+import scipy.sparse
+import pandas as pd
 from collections import defaultdict
 import spotlight
-from scipy.sparse import data
 from spotlight.interactions import Interactions
 import sklearn.preprocessing
 import sklearn
@@ -138,27 +141,49 @@ class RandomVF(ValueFunction):
 
 class GeneralizedNNVF(ValueFunction):
 
-    def __init__(self, neural_network, optimizer, loss_function,epochs, sample_function, *args, **kwargs):
+    def __init__(self, neural_network, optimizer, loss_function,epochs, sample_function, num_negatives, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.neural_network = neural_network
         self.loss_function = loss_function
         self.optimizer = optimizer
         self.epochs=  epochs
         self.sample_function=sample_function
+        self.num_negatives = num_negatives
         # self.loss_function.set_optimizer()
 
     def train(self, dataset_):
-        print(dataset_)
-        dataset_ = dataset_.loc[dataset_.is_click > 0]
+        train_df = dataset_['train']
+        train_df = train_df.loc[train_df.is_click > 0]
+        train_df = train_df[['user_id','product_id','is_click']].drop_duplicates()
+        interactions_matrix = scipy.sparse.dok_matrix((dataset_['num_users'],dataset_['num_items']),dtype=np.int32)
+        # (train_df.user_id.to_numpy(),train_df.product_id.to_numpy()),train_df.is_click.to_numpy()
+        for user, item in zip(train_df.user_id.to_numpy(),train_df.product_id.to_numpy()):
+            interactions_matrix[user,item] = 1
         if isinstance(self.neural_network, (neural_networks.LSTMNet)):
-            self.users_items_sequences = dataset_.groupby('user_id')['product_id'].agg(lambda x: np.array(list(x))).to_dict()
+            self.users_items_sequences = train_df.groupby('user_id')['product_id'].agg(lambda x: np.array(list(x))).to_dict()
             self.users_items_sequences = {k: torch.tensor(v,dtype=torch.long) for k, v in self.users_items_sequences.items()}
-            dataset_ = dataset_[['user_id']].drop_duplicates()
+            train_df = train_df[['user_id']].drop_duplicates()
             # print(list(self.users_items_sequences.values())[0])
 
         t = tqdm(range(self.epochs))
         for _ in t:
-            sampled_dataset = self.sample_function(dataset_)
+            sampled_dataset = self.sample_function(train_df)
+            negatives = []
+            users = sampled_dataset.user_id.to_numpy()
+            for i in range(len(sampled_dataset)):
+                user =users[i]
+                for _ in range(self.num_negatives):
+                    while True:
+                        # user = np.random.randint(dataset_['num_users'])
+                        item = np.random.randint(dataset_['num_items'])
+                        negatives.append([user,item,0])
+                        if (user, item) not in interactions_matrix:
+                            break
+
+            negatives_df=pd.DataFrame(negatives,columns=['user_id','product_id','is_click']).astype(np.int32)
+            # negatives_df.columns = 
+            sampled_dataset=pd.concat([sampled_dataset,negatives_df],axis=0)
+                
             if not isinstance(self.neural_network,neural_networks.LSTMNet):
                 users = torch.tensor(sampled_dataset.user_id.to_numpy()).long()
                 items = torch.tensor(sampled_dataset.product_id.to_numpy()).long()
@@ -310,8 +335,10 @@ class Stacking(ValueFunction):
     def train(self, dataset):
        
         # self.dataset = dataset
-        items_values = []
+        train = dataset['train']
+        predicted_models_scores = []
         for i, model in enumerate(self.models):
+            print('training model',model)
             
             if isinstance(model,GeneralizedNNVF):
                 model.train(dataset["train"])
@@ -320,16 +347,55 @@ class Stacking(ValueFunction):
                 model.train(dataset)
 
             i = 0
-            items_value = np.zeros(len(dataset["train"]['product_id']))
-            for name, group in tqdm(dataset["train"].groupby('query_id')):
-                values = model.predict(group['user_id'].to_numpy(),group['product_id'].to_numpy())
-                for v in values:    
-                    items_value[i] = v
-                    i+=1
-            items_values.append(items_value)
-        items_values = np.array(items_values).T
-        features = sklearn.preprocessing.StandardScaler().fit_transform(items_values)
+            # items_value = np.zeros(len(dataset["train"]['product_id']))
+            # for name, group in tqdm(dataset["train"].groupby('query_id')):
+            predicted_scores = model.predict(train['user_id'].to_numpy(),train['product_id'].to_numpy())
+                # values = model.predict(group['user_id'].to_numpy(),group['product_id'].to_numpy())
+                # for v in values:    
+                    # items_value[i] = v
+                    # i+=1
+            predicted_models_scores.append(predicted_scores)
+        predicted_models_scores = np.array(predicted_models_scores).T
+        features = sklearn.preprocessing.StandardScaler().fit_transform(predicted_models_scores)
+
+        train_df = dataset['train']
+        user_ids = train_df.user_id.unique()
+        train_dict = dict()
+        total = len(train_df["user_id"])
+        # train_dict = train_df.set_index('user_id').to_dict()
+        for index, row in tqdm(train_df.iterrows(), position=0, leave=True, total=total):
+            if row['user_id'] not in train_dict:
+                train_dict[row['user_id']] = []
+            train_dict[row['user_id']].append(row)
+
+        for user_id in tqdm(train_dict, position=0, leave=True):
+            train_dict[user_id] = pd.DataFrame(train_dict[user_id])
+
+        user_features = {"uid": [], "items_clicked": np.zeros(len(user_ids)), "observed_items": np.zeros(len(user_ids)),
+                         "num_sessions": np.zeros(len(user_ids)), "mean_price": np.zeros(len(user_ids))}
+
+        for index, user_id in tqdm(enumerate(user_ids), position=0, leave=True):
+            user_features["uid"].append(user_id)
+            if user_id in train_dict:
+                user_features["items_clicked"][index] = len(train_dict[user_id].loc[(train_dict[user_id].is_click == 1)]["product_id"])
+                user_features["observed_items"][index] = len(train_dict[user_id]["user_id"])
+                user_features["num_sessions"][index] = len(train_dict[user_id]["session_id"].unique())
+                user_features["mean_price"][index] = train_dict[user_id].loc[(train_dict[user_id].is_click == 1)]["product_price"].mean()
+           
+        df_user_features = pd.DataFrame(user_features)
+        self.users_features = df_user_features.set_index('user_id').to_dict()
+        d = {
+            'items_clicked':0,
+            'observed_items':0,
+            'num_sessions':0,
+            'mean_price':0,
+            }
+        self.users_features = defaultdict(lambda: copy.copy(d),self.users_features)
             # dataset["train"][model.name] = items_values[model.name]
+        
+        user_features = pd.DataFrame([self.users_features[i] for i in train_df.user_id]).to_numpy()
+        # item_features = pd.DataFrame([self.users_features[i] for i in train_df.product_id]).to_numpy()
+        features = np.hstack([features,user_features])
 
         # self.lr_items = sklearn.linear_model.LogisticRegression()
         # self.meta_learner = sklearn.linear_model.LinearRegression()

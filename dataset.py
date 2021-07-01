@@ -198,9 +198,9 @@ def get_df_columns_with_pattern(df, pattern):
     return [c for c in df.columns if re.match(pattern, c)]
 
 
-def select_top_features(df, columns):
+def select_top_features(df, columns, k=32):
     selectkbest = sklearn.feature_selection.SelectKBest(
-        sklearn.feature_selection.chi2, k=32)
+        sklearn.feature_selection.chi2, k=k)
     selected_features_values = selectkbest.fit_transform(
         df[columns], df.is_click)
     selected_columns = [
@@ -211,10 +211,13 @@ def select_top_features(df, columns):
     return selected_columns
 
 
-def dimensionality_reduction(df):
-    decomposition = sklearn.decomposition.PCA(32)
+def dimensionality_reduction(df, k=10, columns_name=""):
+    decomposition = sklearn.decomposition.PCA(k)
     result = decomposition.fit_transform(df)
-    return pd.DataFrame(result)
+    result = pd.DataFrame(result)
+    num_col = len(result.columns)
+    result.columns = [columns_name+"_"+str(i) for i in range(0, len(num_col))]
+    return result
 
 
 def sample_fixed_size(df, num_samples):

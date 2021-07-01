@@ -276,7 +276,7 @@ elif method == 'stacking':
                                  loss_function=torch.nn.BCEWithLogitsLoss(),
                                  optimizer=torch.optim.Adam(nn.parameters(),
                                                             lr=0.01),
-                                 epochs=60,
+                                 epochs=1,
                                  # epochs=1,
                                  sample_function=lambda x: dataset.sample_fixed_size(x,len(x)//10),
                                  num_negatives=10,
@@ -291,7 +291,7 @@ elif method == 'stacking':
     recommender = recommenders.SimpleRecommender(value_function=vf,name=method)
 
     recommender.train({
-        'train': train_normalized_df,
+        'train': train_normalized_df.sample(10000),
         'items_attributes': attributes_df,
         'num_users': num_users,
         'num_items': num_items,
@@ -316,10 +316,10 @@ query_str_ids = {v: k for k, v in query_int_ids.items()}
 
 
 for name, group in tqdm(test_normalized_df.groupby('query_id')):
-    if method == 'contextualpopularitynet':
+    if method in ['contextualpopularitynet', 'stacking']:
         users, items = recommender.recommend(group['user_id'].to_numpy(),
                                              group['product_id'].to_numpy(),
-                                             users_context=group[users_columns])
+                                             users_context=group)
     else:
         users, items = recommender.recommend(group['user_id'].to_numpy(),
                                              group['product_id'].to_numpy())

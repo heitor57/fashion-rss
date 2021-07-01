@@ -76,7 +76,7 @@ dataset.parquet_save(test_df,
                      dataset_output_settings['validation_path'])
 
 items_columns_to_dummies = [
-    'season', 'collection','gender','category_id_l1', 'season_year'
+    'season', 'collection','gender','category_id_l1','category_id_l2'
 ]
 attributes_df = dataset.create_dummies(attributes_df, items_columns_to_dummies)
 # attributes_df = dataset.select_top_features(attributes_df,

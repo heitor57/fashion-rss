@@ -1,4 +1,5 @@
 from sys import meta_path
+import re
 import time
 import random
 import copy
@@ -339,6 +340,7 @@ class Stacking(ValueFunction):
        
         # self.dataset = dataset
         train = dataset['train']
+        attributes_df = dataset['items_attributes']
         predicted_models_scores = []
         for i, model in enumerate(self.models):
             print('training model',model)
@@ -378,31 +380,6 @@ class Stacking(ValueFunction):
         start_time = time.time()
         user_features_df['mean_user_price'] =train_df.loc[train_df.is_click==1].groupby('user_id')['product_price'].mean()
         print("%s seconds" % (time.time() - start_time))
-        # print("calc")
-        # train_dict = dict()
-        # total = len(train_df["user_id"])
-        # # train_dict = train_df.set_index('user_id').to_dict()
-        # for index, row in tqdm(train_df.iterrows(), position=0, leave=True, total=total):
-            # if row['user_id'] not in train_dict:
-                # train_dict[row['user_id']] = []
-            # train_dict[row['user_id']].append(row)
-
-        # for user_id in tqdm(train_dict, position=0, leave=True):
-            # train_dict[user_id] = pd.DataFrame(train_dict[user_id])
-
-        # user_features = {"uid": [], "items_clicked": np.zeros(len(user_ids)), "observed_items": np.zeros(len(user_ids)),
-                         # "num_sessions": np.zeros(len(user_ids)), "mean_price": np.zeros(len(user_ids))}
-
-        # for index, user_id in tqdm(enumerate(user_ids), position=0, leave=True):
-            # user_features["uid"].append(user_id)
-            # if user_id in train_dict:
-                # user_features["items_clicked"][index] = len(train_dict[user_id].loc[(train_dict[user_id].is_click == 1)]["product_id"])
-                # user_features["observed_items"][index] = len(train_dict[user_id]["user_id"])
-                # user_features["num_sessions"][index] = train_dict[user_id]["session_id"].nunique()
-                # user_features["mean_price"][index] = train_dict[user_id].loc[(train_dict[user_id].is_click == 1)]["product_price"].mean()
-           
-        # df_user_features = pd.DataFrame(user_features)
-        # df_user_features.to_csv('data_phase1/data/stacking_user_features.csv')
         self.users_features = user_features_df.to_dict()
         d = {
             'items_clicked':0,
@@ -417,6 +394,20 @@ class Stacking(ValueFunction):
         # item_features = pd.DataFrame([self.users_features[i] for i in train_df.product_id]).to_numpy()
         features = np.hstack([features,user_features])
 
+        self.items_columns_to_dummies = [
+            'season', 'collection','gender','category_id_l1','category_id_l2'
+        ]
+        pattern = '|'.join(self.items_columns_to_dummies)
+        self.items_columns = [c for c in attributes_df.columns if re.match(pattern, c)]
+        self.users_columns_to_dummies = [
+            'device_category', 'device_platform',
+            'user_tier',
+        ]
+        pattern = '|'.join(self.users_columns_to_dummies)
+        self.users_columns = [c for c in attributes_df.columns if re.match(pattern, c)]
+        
+
+        features = np.hstack([features,train[self.users_columns+self.items_columns].to_numpy()])
         # self.lr_items = sklearn.linear_model.LogisticRegression()
         # self.meta_learner = sklearn.linear_model.LinearRegression()
         self.meta_learner.fit(features, dataset["train"]["is_click"])
@@ -424,7 +415,7 @@ class Stacking(ValueFunction):
         # print(self.meta_learner.coef_)
         # lr_items.intercept_ + lr_items.coef_[0] * PopularVF + lr_items.coef_[1] * NCFVF
 
-    def predict(self, users, items):
+    def predict(self, users, items, users_context=None):
         result = []
         models_values = []
         for model in self.models:
@@ -438,6 +429,7 @@ class Stacking(ValueFunction):
         # print(features.shape)
         user_features = pd.DataFrame([self.users_features[i]  for i in users]).to_numpy()
         features = np.hstack([features,user_features])
+        features = np.hstack([features,np.array(users_context[self.users_columns+self.items_columns])])
         # print(features)
         # print(features)
         result= self.meta_learner.predict(features)

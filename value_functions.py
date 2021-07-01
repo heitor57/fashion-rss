@@ -1,4 +1,5 @@
 from sys import meta_path
+import time
 import random
 import copy
 import scipy.sparse
@@ -361,31 +362,48 @@ class Stacking(ValueFunction):
         features = sklearn.preprocessing.StandardScaler().fit_transform(predicted_models_scores)
 
         train_df = dataset['train']
-        user_ids = train_df.user_id.unique()
-        train_dict = dict()
-        total = len(train_df["user_id"])
-        # train_dict = train_df.set_index('user_id').to_dict()
-        for index, row in tqdm(train_df.iterrows(), position=0, leave=True, total=total):
-            if row['user_id'] not in train_dict:
-                train_dict[row['user_id']] = []
-            train_dict[row['user_id']].append(row)
+        # user_ids = train_df.user_id.unique()
+        # print("calc")
 
-        for user_id in tqdm(train_dict, position=0, leave=True):
-            train_dict[user_id] = pd.DataFrame(train_dict[user_id])
+        user_features_df = pd.DataFrame()
+        start_time = time.time()
+        user_features_df['num_sessions'] = train_df.groupby('user_id')['session_id'].nunique()
+        print("%s seconds" % (time.time() - start_time))
+        start_time = time.time()
+        user_features_df['observed_items'] =train_df.groupby('user_id')['product_id'].nunique()
+        print("%s seconds" % (time.time() - start_time))
+        start_time = time.time()
+        user_features_df['items_clicked'] =train_df.loc[train_df.is_click==1].groupby('user_id')['product_id'].nunique()
+        print("%s seconds" % (time.time() - start_time))
+        start_time = time.time()
+        user_features_df['mean_user_price'] =train_df.loc[train_df.is_click==1].groupby('user_id')['product_price'].mean()
+        print("%s seconds" % (time.time() - start_time))
+        # print("calc")
+        # train_dict = dict()
+        # total = len(train_df["user_id"])
+        # # train_dict = train_df.set_index('user_id').to_dict()
+        # for index, row in tqdm(train_df.iterrows(), position=0, leave=True, total=total):
+            # if row['user_id'] not in train_dict:
+                # train_dict[row['user_id']] = []
+            # train_dict[row['user_id']].append(row)
 
-        user_features = {"uid": [], "items_clicked": np.zeros(len(user_ids)), "observed_items": np.zeros(len(user_ids)),
-                         "num_sessions": np.zeros(len(user_ids)), "mean_price": np.zeros(len(user_ids))}
+        # for user_id in tqdm(train_dict, position=0, leave=True):
+            # train_dict[user_id] = pd.DataFrame(train_dict[user_id])
 
-        for index, user_id in tqdm(enumerate(user_ids), position=0, leave=True):
-            user_features["uid"].append(user_id)
-            if user_id in train_dict:
-                user_features["items_clicked"][index] = len(train_dict[user_id].loc[(train_dict[user_id].is_click == 1)]["product_id"])
-                user_features["observed_items"][index] = len(train_dict[user_id]["user_id"])
-                user_features["num_sessions"][index] = train_dict[user_id]["session_id"].nunique()
-                user_features["mean_price"][index] = train_dict[user_id].loc[(train_dict[user_id].is_click == 1)]["product_price"].mean()
+        # user_features = {"uid": [], "items_clicked": np.zeros(len(user_ids)), "observed_items": np.zeros(len(user_ids)),
+                         # "num_sessions": np.zeros(len(user_ids)), "mean_price": np.zeros(len(user_ids))}
+
+        # for index, user_id in tqdm(enumerate(user_ids), position=0, leave=True):
+            # user_features["uid"].append(user_id)
+            # if user_id in train_dict:
+                # user_features["items_clicked"][index] = len(train_dict[user_id].loc[(train_dict[user_id].is_click == 1)]["product_id"])
+                # user_features["observed_items"][index] = len(train_dict[user_id]["user_id"])
+                # user_features["num_sessions"][index] = train_dict[user_id]["session_id"].nunique()
+                # user_features["mean_price"][index] = train_dict[user_id].loc[(train_dict[user_id].is_click == 1)]["product_price"].mean()
            
-        df_user_features = pd.DataFrame(user_features)
-        self.users_features = df_user_features.set_index('uid').to_dict()
+        # df_user_features = pd.DataFrame(user_features)
+        # df_user_features.to_csv('data_phase1/data/stacking_user_features.csv')
+        self.users_features = user_features_df.to_dict()
         d = {
             'items_clicked':0,
             'observed_items':0,

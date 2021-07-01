@@ -216,7 +216,7 @@ def dimensionality_reduction(df, k=10, columns_name=""):
     result = decomposition.fit_transform(df)
     result = pd.DataFrame(result)
     num_col = len(result.columns)
-    result.columns = [columns_name+"_"+str(i) for i in range(0, len(num_col))]
+    result.columns = [columns_name+"_"+str(i) for i in range(0, num_col)]
     return result
 
 

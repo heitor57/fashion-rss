@@ -339,7 +339,8 @@ class Stacking(ValueFunction):
     def train(self, dataset):
        
         # self.dataset = dataset
-        train = dataset['train']
+        train_df = dataset['train']
+        train_df = train_df.loc[train_df['is_click'] == 1]
         attributes_df = dataset['items_attributes']
         predicted_models_scores = []
         for i, model in enumerate(self.models):
@@ -354,7 +355,7 @@ class Stacking(ValueFunction):
             i = 0
             # items_value = np.zeros(len(dataset["train"]['product_id']))
             # for name, group in tqdm(dataset["train"].groupby('query_id')):
-            predicted_scores = model.predict(train['user_id'].to_numpy(),train['product_id'].to_numpy())
+            predicted_scores = model.predict(train_df['user_id'].to_numpy(),train_df['product_id'].to_numpy())
                 # values = model.predict(group['user_id'].to_numpy(),group['product_id'].to_numpy())
                 # for v in values:    
                     # items_value[i] = v
@@ -363,7 +364,6 @@ class Stacking(ValueFunction):
         predicted_models_scores = np.array(predicted_models_scores).T
         features = sklearn.preprocessing.StandardScaler().fit_transform(predicted_models_scores)
 
-        train_df = dataset['train']
         # user_ids = train_df.user_id.unique()
         # print("calc")
 
@@ -395,7 +395,7 @@ class Stacking(ValueFunction):
         features = np.hstack([features,user_features])
 
         self.items_columns_to_dummies = [
-            'season', 'collection','gender','category_id_l1','category_id_l2'
+            'season', 'collection','gender','category_id_l1','category_id_l2', 'season_year'
         ]
         pattern = '|'.join(self.items_columns_to_dummies)
         self.items_columns = [c for c in attributes_df.columns if re.match(pattern, c)]
@@ -405,12 +405,16 @@ class Stacking(ValueFunction):
         ]
         pattern = '|'.join(self.users_columns_to_dummies)
         self.users_columns = [c for c in attributes_df.columns if re.match(pattern, c)]
+        self.attributes_df = attributes_df.sort_values('product_id')
         
-
-        features = np.hstack([features,train[self.users_columns+self.items_columns].to_numpy()])
+        print(attributes_df[self.items_columns])
+        print(train_df[self.users_columns])
+        items_features = np.array([self.attributes_df.iloc[i][self.items_columns].to_numpy() for i in train_df.product_id])
+        features = np.hstack([features,train_df[self.users_columns].to_numpy(),items_features])
         # self.lr_items = sklearn.linear_model.LogisticRegression()
         # self.meta_learner = sklearn.linear_model.LinearRegression()
-        self.meta_learner.fit(features, dataset["train"]["is_click"])
+        # print(features)
+        self.meta_learner.fit(features, train_df["is_click"])
         # print(self.meta_learner.intercept_)
         # print(self.meta_learner.coef_)
         # lr_items.intercept_ + lr_items.coef_[0] * PopularVF + lr_items.coef_[1] * NCFVF
@@ -429,7 +433,10 @@ class Stacking(ValueFunction):
         # print(features.shape)
         user_features = pd.DataFrame([self.users_features[i]  for i in users]).to_numpy()
         features = np.hstack([features,user_features])
-        features = np.hstack([features,np.array(users_context[self.users_columns+self.items_columns])])
+
+        items_features = np.array([self.attributes_df.iloc[i][self.items_columns].to_numpy() for i in items])
+        features = np.hstack([features, users_context[self.users_columns],items_features])
+        # features = np.hstack([features,np.array(users_context[self.users_columns+self.items_columns])])
         # print(features)
         # print(features)
         result= self.meta_learner.predict(features)

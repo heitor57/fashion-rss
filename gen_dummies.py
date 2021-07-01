@@ -55,18 +55,24 @@ del test_df['is_test'], train_df['is_test']
 # columns = dataset.get_df_columns_with_pattern(train_df,
 													# pattern)
 
-items_columns = []
-items_columns_to_dummies = ['attribute_values']
-attributes_df = dataset.create_dummies(attributes_df, items_columns_to_dummies)
-pattern = '|'.join(items_columns_to_dummies)
-items_columns.append(dataset.get_df_columns_with_pattern(attributes_df, pattern))
-attributes_df = pd.concat([attributes_df.drop(items_columns[0],axis=1),dataset.dimensionality_reduction(attributes_df[items_columns[0]], columns_name="attribute_values").astype(np.float32)],axis=1)
+items_columns_to_dummies = [
+    'season', 'collection','gender','category_id_l1','category_id_l2'
+]
 
-items_columns_to_dummies = ['material_values']
 attributes_df = dataset.create_dummies(attributes_df, items_columns_to_dummies)
-pattern = '|'.join(items_columns_to_dummies)
-items_columns.append(dataset.get_df_columns_with_pattern(attributes_df, pattern))
-attributes_df = pd.concat([attributes_df.drop(items_columns[1],axis=1),dataset.dimensionality_reduction(attributes_df[items_columns[1]], columns_name="material_values").astype(np.float32)],axis=1)
+
+# items_columns = []
+# items_columns_to_dummies = ['attribute_values']
+# attributes_df = dataset.create_dummies(attributes_df, items_columns_to_dummies)
+# pattern = '|'.join(items_columns_to_dummies)
+# items_columns.append(dataset.get_df_columns_with_pattern(attributes_df, pattern))
+# attributes_df = pd.concat([attributes_df.drop(items_columns[0],axis=1),dataset.dimensionality_reduction(attributes_df[items_columns[0]], columns_name="attribute_values").astype(np.float32)],axis=1)
+
+# items_columns_to_dummies = ['material_values']
+# attributes_df = dataset.create_dummies(attributes_df, items_columns_to_dummies)
+# pattern = '|'.join(items_columns_to_dummies)
+# items_columns.append(dataset.get_df_columns_with_pattern(attributes_df, pattern))
+# attributes_df = pd.concat([attributes_df.drop(items_columns[1],axis=1),dataset.dimensionality_reduction(attributes_df[items_columns[1]], columns_name="material_values").astype(np.float32)],axis=1)
 
 # print(attributes_df.columns)
 # input("	")

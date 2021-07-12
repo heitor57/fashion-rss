@@ -258,6 +258,12 @@ def dataset_settings_factory(parameters):
             'validation_path': 'data_phase1/validation.parquet',
             'attributes_path': 'data_phase1/attributes.parquet'
         }
+    elif name == 'farfetchfinal':
+        return {
+            'train_path': 'data_phase1/train.parquet',
+            'validation_path': 'data_phase2/test.parquet',
+            'attributes_path': 'data_phase1/attributes.parquet'
+        }
     # elif name == 'farfetchdummies':
         # return {
             # 'train_path':

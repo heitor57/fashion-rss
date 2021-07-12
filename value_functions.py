@@ -251,7 +251,7 @@ class PopularVF(ValueFunction):
             # self.items_popularity[product_id['product_id']] +=1
         pass
 
-    def predict(self, users, items):
+    def predict(self, users, items,users_context=None):
         return self.items_popularity[items]
         # v = np.random.random(len(users))
         # return v

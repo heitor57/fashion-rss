@@ -51,9 +51,14 @@ def run(group):
 
 dataset_input_parameters = {'dummies':
 {
-'base': {'farfetch': {}},
+'base': {'farfetchfinal': {}},
 }
 }
+# dataset_input_parameters = {'dummies':
+# {
+# 'base': {'farfetch': {}},
+# }
+# }
 # dataset_input_parameters = {
     # 'dummies': {
         # 'base': {
@@ -164,14 +169,20 @@ elif method == 'popularitynet':
         neural_network=nn,
         loss_function=torch.nn.BCEWithLogitsLoss(),
         optimizer=torch.optim.Adam(nn.parameters(), lr=0.1),
-        sample_function=lambda x: dataset.sample_fixed_size(x, len(x)),
-        epochs=200)
+        sample_function=lambda x: dataset.sample_fixed_size(x, len(x)//10),
+        epochs=200,
+        num_negatives=10
+        )
     # nnvf = value_functions.NNVF(nn,
     # loss_function,
     # num_batchs=1000,
     # batch_size=2048)
     recommender = recommenders.NNRecommender(nnvf, name=method)
-    recommender.train({'train': train_normalized_df})
+    recommender.train({
+        'train': train_normalized_df,
+        'num_users': num_users,
+        'num_items': num_items
+    })
 elif method == 'contextualpopularitynet':
     # loss_function = loss_functions.BPRLoss(1e-4, 0.01)
     # loss_function = loss_functions.RegressionLoss()

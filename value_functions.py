@@ -432,12 +432,14 @@ class Stacking(ValueFunction):
         ]
         pattern = '|'.join(self.items_columns_to_dummies)
         self.items_columns = [c for c in attributes_df.columns if re.match(pattern, c)]
+        print('number of items columns',len(self.items_columns))
         self.users_columns_to_dummies = [
             'device_category', 'device_platform',
-            'user_tier',
+            'user_tier','user_country'
         ]
         pattern = '|'.join(self.users_columns_to_dummies)
-        self.users_columns = [c for c in attributes_df.columns if re.match(pattern, c)]
+        self.users_columns = [c for c in train_df.columns if re.match(pattern, c)]
+        print('number of users columns',len(self.users_columns))
         self.attributes_df = attributes_df.sort_values('product_id')
         
         print(attributes_df[self.items_columns])

@@ -263,7 +263,7 @@ elif method == 'ncf':
         optimizer=torch.optim.Adam(nn.parameters(), lr=0.01),
         epochs=100,
         sample_function=lambda x: dataset.sample_fixed_size(x,
-                                                            len(x) // 100),
+                                                            len(x) // 10),
         # sample_function=lambda x: dataset.sample_fixed_size(x,100000),
         num_negatives=100,
     )
@@ -328,7 +328,7 @@ elif method == 'lightgcn':
     loss_function = loss_functions.BPRLoss(1e-1, 0.001)
     nnvf = value_functions.NNVF(nn,
                                 loss_function,
-                                num_batchs=20,
+                                num_batchs=200,
                                 batch_size=int(1e6))
     recommender = recommenders.NNRecommender(nnvf, name=method)
     # recommender.train(train_normalized_df)
@@ -347,15 +347,25 @@ elif method == 'stacking':
 
     nn = neural_networks.NCF(num_users, num_items, constants.EMBEDDING_DIM, 4,
                              0.0, 'NeuMF-end')
+    # NCFVF = value_functions.GeneralizedNNVF(
+        # neural_network=nn,
+        # loss_function=torch.nn.BCEWithLogitsLoss(),
+        # optimizer=torch.optim.Adam(nn.parameters(), lr=0.01),
+        # epochs=60,
+        # # epochs=1,
+        # sample_function=lambda x: dataset.sample_fixed_size(x,
+                                                            # len(x) // 10),
+        # num_negatives=10,
+    # )
     NCFVF = value_functions.GeneralizedNNVF(
         neural_network=nn,
         loss_function=torch.nn.BCEWithLogitsLoss(),
         optimizer=torch.optim.Adam(nn.parameters(), lr=0.01),
-        epochs=60,
-        # epochs=1,
+        epochs=100,
         sample_function=lambda x: dataset.sample_fixed_size(x,
                                                             len(x) // 10),
-        num_negatives=10,
+        # sample_function=lambda x: dataset.sample_fixed_size(x,100000),
+        num_negatives=100,
     )
 
     models = [PopularVF, NCFVF]

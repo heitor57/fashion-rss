@@ -21,7 +21,7 @@ dataset_input_parameters = {
                 'base': {
                     'farfetch': {}
                 },
-                'train_size': 0.9
+                'train_size': 0.8
             }
         }
     }

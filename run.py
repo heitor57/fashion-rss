@@ -143,12 +143,22 @@ elif method == 'svd':
         'num_users': num_users,
         'num_items': num_items,
     })
+elif method == 'svdpp':
+    vf = value_functions.SVDPPVF(num_lat=10)
+    recommender = recommenders.SimpleRecommender(vf, name=method)
+    recommender.train({
+        'train': train_normalized_df,
+        'num_users': num_users,
+        'num_items': num_items,
+    })
 elif method == 'popular':
     vf = value_functions.PopularVF()
     recommender = recommenders.SimpleRecommender(vf, name=method)
     recommender.train({
         'train': train_normalized_df,
         'items_attributes': attributes_df,
+        'num_users': num_users,
+        'num_items': num_items,
     })
 elif method == 'spotlight':
     # nn = neural_networks.LSTMNet(num_items=num_items, embedding_dim=constants.EMBEDDING_DIM)
@@ -255,17 +265,17 @@ elif method == 'contextualpopularitynet':
     # plot.figure.savefig('contextualpopularitynet_input_layer.png')
 
 elif method == 'ncf':
-    nn = neural_networks.NCF(num_users, num_items, constants.EMBEDDING_DIM, 4,
+    nn = neural_networks.NCF(num_users, num_items, 8,4,
                              0.0, 'NeuMF-end')
     nnvf = value_functions.GeneralizedNNVF(
         neural_network=nn,
         loss_function=torch.nn.BCEWithLogitsLoss(),
         optimizer=torch.optim.Adam(nn.parameters(), lr=0.01),
-        epochs=100,
+        epochs=60,
         sample_function=lambda x: dataset.sample_fixed_size(x,
-                                                            len(x) // 10),
+                                                            len(x) // 5),
         # sample_function=lambda x: dataset.sample_fixed_size(x,100000),
-        num_negatives=100,
+        num_negatives=10,
     )
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train({
@@ -419,7 +429,7 @@ test_users_query_id = {k: v[0] for k, v in test_users_query_id.items()}
 groups = [group for name, group in tqdm(test_normalized_df.groupby('query_id'))]
 # executor = ProcessPoolExecutor(max_workers=4)
 num_groups = len(groups)
-chunksize = num_groups // 20
+chunksize = num_groups // 200
 groups_chunks = list(chunks(groups, chunksize))
 
 # if method == 'lightgcn':

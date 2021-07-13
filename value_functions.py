@@ -1,3 +1,4 @@
+from mf.SVDPlusPlus import SVDPlusPlus
 from sys import meta_path
 import re
 import time
@@ -274,6 +275,7 @@ class PopularVF(ValueFunction):
         
         self.items_popularity = np.zeros(len(dataset_['items_attributes']))
         train = dataset_['train']
+        self.num_items = dataset_['num_items']
         for index,row in train.loc[train.is_click>0].groupby('product_id').count().reset_index().iterrows():
             self.items_popularity[row['product_id']] += row['user_id']
         # for user_id, product_id in tqdm(train.loc[train.is_click>0].iterrows()):
@@ -283,7 +285,7 @@ class PopularVF(ValueFunction):
         pass
 
     def predict(self, users, items,users_context=None):
-        return self.items_popularity[items]
+        return self.items_popularity[items]/self.num_items
         # v = np.random.random(len(users))
         # return v
 
@@ -316,6 +318,72 @@ class SVDVF(ValueFunction):
         for u, i in zip(users,items):
             values[j] = self.U[u] @ self.V[i]
             j+=1
+        return values
+
+class SVDPPVF(ValueFunction):
+
+    def __init__(self, num_lat, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.num_lat = num_lat
+
+    def train(self, dataset_):
+        train= dataset_['train']
+        # train['is_click'].loc[train.is_click==0] = -1
+        train = train.loc[train.is_click>0]
+        train = train.groupby(['user_id','product_id'])['is_click'].sum().reset_index()
+        train['is_click'].loc[train.is_click>0] = 1
+        # train['is_click'].loc[train.is_click<=0] = 0
+        spm = scipy.sparse.csr_matrix((train.is_click,(train.user_id,train.product_id)),shape=(dataset_['num_users'], dataset_['num_items']),dtype=float)
+        self.train_matrix = spm
+        self.svdpp = SVDPlusPlus(stop_criteria=0.0000001)
+        self.svdpp.fit(spm)
+        # model=sklearn.decomposition.NMF(n_components=10)
+        # model.fit_transform(spm)
+        # u, s, vt = scipy.sparse.linalg.svds(spm,k=self.num_lat)
+        # self.U = s*u
+        # self.V = vt.T
+        # self.s = s
+
+        # NMF(n_components=50, init='random', random_state=0, verbose=True)
+        pass
+
+    # @staticmethod
+    def predict_user_item(self,uids, items):
+        # self = ctypes.cast(obj_id, ctypes.py_object).value
+        # test_iids = np.where(user_consumption == 0)[0]
+        p_us = []
+        for user in uids:
+            user_consumption = self.train_matrix[user, :].A.flatten()
+            all_iids = np.nonzero(user_consumption)[0]
+            p_u = self.svdpp.p[user] + np.sum(self.svdpp.y[all_iids], axis=0)
+            p_us += [p_u]
+        p_u=np.array(p_us)
+        # print(p_u.shape,self.svdpp.q[items].shape)
+        # items_scores = [
+        items_scores= self.svdpp.r_mean + self.svdpp.b_u[uids] + self.svdpp.b_i[items] + np.sum(p_u * self.svdpp.q[items],axis=1)
+            # for iid in test_iids
+        # ]
+        # top_iids = test_iids[np.argsort(items_scores)
+                             # [::-1]][:self.result_list_size]
+        return items_scores
+
+    def predict(self, users, items, contexts):
+        # values = np.empty(len(users))
+        # test_uids = np.nonzero(np.sum(test_matrix > 0, axis=1).A.flatten())[0]
+        # self_id = id(self)
+
+        # with threadpool_limits(limits=1, user_api='blas'):
+            # args = [(
+                # self_id,
+                # int(uid),
+            # ) for uid in test_uids]
+        values =self.predict_user_item(users,items)
+        # print(values.shape)
+        # print(values)
+        # j = 0
+        # for u, i in zip(users,items):
+            # values[j] = self.U[u] @ self.V[i]
+            # j+=1
         return values
 
 class Coverage(ValueFunction):
@@ -424,6 +492,12 @@ class Stacking(ValueFunction):
             # dataset["train"][model.name] = items_values[model.name]
         
         user_features = pd.DataFrame([self.users_features[i] for i in train_df.user_id]).to_numpy()
+        self.user_features_min_max_scaler= sklearn.preprocessing.MinMaxScaler()
+        print('without norm')
+        print(user_features)
+        user_features = self.user_features_min_max_scaler.fit_transform(user_features)
+        print('with norm')
+        print(user_features)
         # item_features = pd.DataFrame([self.users_features[i] for i in train_df.product_id]).to_numpy()
         features = np.hstack([features,user_features])
 

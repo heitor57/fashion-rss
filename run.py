@@ -1,9 +1,14 @@
+from collections import defaultdict
 import pandas as pd
 import sklearn.ensemble
 import sklearn.tree
-import spotlight
 import sklearn.neural_network
-from spotlight.sequence.implicit import ImplicitSequenceModel
+try:
+    import spotlight
+    from spotlight.sequence.implicit import ImplicitSequenceModel
+except ModuleNotFoundError:
+    pass
+
 import seaborn
 import re
 import joblib
@@ -27,50 +32,67 @@ from concurrent.futures import ProcessPoolExecutor
 import multiprocessing
 
 
-def run(group):
+def chunks(l, n):
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
 
+
+def run(groups, recommender):
+    # def run(groups):
+    # print('running a group',group['user_id'])
+    tmpg = recommender.value_function.neural_network.graph
+
+    scootensor = torch.sparse_coo_tensor(tmpg[0],
+                                         tmpg[1],
+                                         dtype=torch.float,
+                                         size=(num_users + num_items,
+                                               num_users + num_items))
+    recommender.value_function.neural_network.graph = scootensor
     results = []
-    if method == 'contextualpopularitynet':
-        users, items = recommender.recommend(group['user_id'].to_numpy(),
-                                             group['product_id'].to_numpy(),
-                                             users_context=group[users_columns])
-    else:
-        users, items = recommender.recommend(group['user_id'].to_numpy(),
-                                             group['product_id'].to_numpy())
-    user_id = group['user_id'].iloc[0]
-    group = group.set_index('user_id')
-    query_id = group['query_id'].iloc[0]
+    for group in groups:
+        print('running a group', group['user_id'])
+        if method == 'contextualpopularitynet':
+            users, items = recommender.recommend(
+                group['user_id'].to_numpy(),
+                group['product_id'].to_numpy(),
+                users_context=group[users_columns])
+        else:
+            users, items = recommender.recommend(group['user_id'].to_numpy(),
+                                                 group['product_id'].to_numpy())
+        user_id = group['user_id'].iloc[0]
+        group = group.set_index('user_id')
+        query_id = group['query_id'].iloc[0]
 
-    j = 1
-    for i in items:
-        results.append([query_str_ids[query_id], product_str_ids[i], j])
-        j += 1
+        j = 1
+        for i in items:
+            results.append([query_str_ids[query_id], product_str_ids[i], j])
+            j += 1
 
     return results
 
 
-dataset_input_parameters = {'dummies':
-{
-'base': {'farfetchfinal': {}},
-}
-}
+# dataset_input_parameters = {'dummies':
+# {
+# 'base': {'farfetchfinal': {}},
+# }
+# }
 # dataset_input_parameters = {'dummies':
 # {
 # 'base': {'farfetch': {}},
 # }
 # }
-# dataset_input_parameters = {
-    # 'dummies': {
-        # 'base': {
-            # 'split': {
-                # 'base': {
-                    # 'farfetch': {}
-                # },
-                # 'train_size': 0.8
-            # }
-        # }
-    # }
-# }
+dataset_input_parameters = {
+    'dummies': {
+        'base': {
+            'split': {
+                'base': {
+                    'farfetch': {}
+                },
+                'train_size': 0.8
+            }
+        }
+    }
+}
 dataset_input_settings = dataset.dataset_settings_factory(
     dataset_input_parameters)
 
@@ -114,7 +136,7 @@ elif method == 'random':
     vf = value_functions.RandomVF()
     recommender = recommenders.SimpleRecommender(vf, name=method)
 elif method == 'svd':
-    vf = value_functions.SVDVF()
+    vf = value_functions.SVDVF(num_lat=32)
     recommender = recommenders.SimpleRecommender(vf, name=method)
     recommender.train({
         'train': train_normalized_df,
@@ -169,10 +191,10 @@ elif method == 'popularitynet':
         neural_network=nn,
         loss_function=torch.nn.BCEWithLogitsLoss(),
         optimizer=torch.optim.Adam(nn.parameters(), lr=0.1),
-        sample_function=lambda x: dataset.sample_fixed_size(x, len(x)//10),
+        sample_function=lambda x: dataset.sample_fixed_size(x,
+                                                            len(x) // 10),
         epochs=200,
-        num_negatives=10
-        )
+        num_negatives=10)
     # nnvf = value_functions.NNVF(nn,
     # loss_function,
     # num_batchs=1000,
@@ -268,42 +290,55 @@ elif method == 'lightgcn':
     tmp_train_df = train_normalized_df.copy()
     tmp_train_df = tmp_train_df.loc[tmp_train_df.is_click > 0]
     tmp_train_df = tmp_train_df.groupby(['user_id', 'product_id'
-                                        ])['is_click'].sum() > 1
+                                        ])['is_click'].sum() >= 1
     tmp_train_df = tmp_train_df.reset_index()
     tmp_train_df.product_id = tmp_train_df.product_id + num_users
     tmp_train_df_2 = tmp_train_df.copy()
     # tmp_train_df.product_id = tmp_train_df.product_id + num_users
-    scootensor = torch.sparse_coo_tensor(np.array([
-        np.hstack([tmp_train_df.user_id.values,
-                   tmp_train_df.product_id.values]),
-        np.hstack([tmp_train_df.product_id.values,
-                   tmp_train_df.user_id.values]),
-    ]),
-                                         np.hstack([
-                                             tmp_train_df.is_click.values,
-                                             tmp_train_df.is_click.values
-                                         ]),
-                                         dtype=torch.float,
-                                         size=(num_users + num_items,
-                                               num_users + num_items))
+    scootensor = torch.sparse_coo_tensor(
+        np.array([
+            np.hstack(
+                [tmp_train_df.user_id.values, tmp_train_df.product_id.values]),
+            np.hstack(
+                [tmp_train_df.product_id.values, tmp_train_df.user_id.values]),
+        ]),
+        np.hstack([
+            tmp_train_df.is_click.values.astype('int'),
+            tmp_train_df.is_click.values.astype('int')
+        ]),
+        dtype=torch.float,
+        size=(num_users + num_items, num_users + num_items))
     scootensor = scootensor.coalesce()
-    nn = neural_networks.LightGCN(latent_dim_rec=50,
-                                  lightGCN_n_layers=3,
-                                  keep_prob=0.99,
+    # print(scootensor)
+    # print(scootensor.indices())
+    keep_prob = 0.99
+    nn = neural_networks.LightGCN(latent_dim_rec=32,
+                                  lightGCN_n_layers=2,
+                                  keep_prob=keep_prob,
                                   A_split=False,
                                   pretrain=0,
                                   user_emb=None,
                                   item_emb=None,
-                                  dropout=0.01,
+                                  dropout=1 - keep_prob,
                                   graph=scootensor,
                                   _num_users=num_users,
                                   _num_items=num_items,
                                   training=True)
 
-    loss_function = loss_functions.BPRLoss(1e-4, 0.001)
-    nnvf = value_functions.NNVF(nn, loss_function, num_batchs=200)
+    loss_function = loss_functions.BPRLoss(1e-1, 0.001)
+    nnvf = value_functions.NNVF(nn,
+                                loss_function,
+                                num_batchs=20,
+                                batch_size=int(1e6))
     recommender = recommenders.NNRecommender(nnvf, name=method)
-    recommender.train(train_normalized_df)
+    # recommender.train(train_normalized_df)
+    recommender.train({
+        # 'train': train_normalized_df.sample(10000),
+        'train': train_normalized_df,
+        'items_attributes': attributes_df,
+        'num_users': num_users,
+        'num_items': num_items,
+    })
     nn.training = False
 elif method == 'stacking':
 
@@ -366,33 +401,53 @@ else:
 results = []
 product_str_ids = {v: k for k, v in product_int_ids.items()}
 query_str_ids = {v: k for k, v in query_int_ids.items()}
+# query_str_ids = {v: k for k, v in query_int_ids.items()}
+test_users_query_id = test_normalized_df.groupby(
+    'user_id')['query_id'].unique().to_dict()
+test_users_query_id = {k: v[0] for k, v in test_users_query_id.items()}
 
-# groups = [group for name, group in tqdm(test_normalized_df.groupby('query_id'))]
-# executor = ProcessPoolExecutor()
-# num_args = len(groups)
-# chunksize = int(num_args/multiprocessing.cpu_count())
+groups = [group for name, group in tqdm(test_normalized_df.groupby('query_id'))]
+# executor = ProcessPoolExecutor(max_workers=4)
+num_groups = len(groups)
+chunksize = num_groups // 20
+groups_chunks = list(chunks(groups, chunksize))
 
-# print("Starting recommender...")
-# for i in tqdm(executor.map(run, groups),total=num_args):
+# if method == 'lightgcn':
+# g = recommender.value_function.neural_network.graph
+# recommender.value_function.neural_network.graph= [g.indices(),g.values()]
+# # recommender.vf.neural_network.graph = None
+print("Starting recommender...")
+# for i in tqdm(executor.map(run, groups_chunks, [recommender]*len(groups)),total=num_groups):
+# # for i in tqdm(executor.map(run, groups_chunks),total=num_groups):
 # results += i
 
-for name, group in tqdm(test_normalized_df.groupby('query_id')):
+# for name, group in tqdm(test_normalized_df.groupby('query_id')):
+users_num_items_recommended_online_test = defaultdict(lambda: 1)
+for groups_tmp in tqdm(groups_chunks,total=len(groups_chunks)):
+    chunk_users_items_df = pd.concat(groups_tmp, axis=0)
     if method in ['contextualpopularitynet', 'stacking']:
-        users, items = recommender.recommend(group['user_id'].to_numpy(),
-                                             group['product_id'].to_numpy(),
-                                             users_context=group)
+        users, items = recommender.recommend(
+            chunk_users_items_df['user_id'].to_numpy(),
+            chunk_users_items_df['product_id'].to_numpy(),
+            users_context=chunk_users_items_df)
     else:
-        users, items = recommender.recommend(group['user_id'].to_numpy(),
-                                             group['product_id'].to_numpy())
-    user_id = group['user_id'].iloc[0]
-    group = group.set_index('user_id')
-    query_id = group['query_id'].iloc[0]
-    j = 1
-    for i in items:
-        results.append([query_str_ids[query_id], product_str_ids[i], j])
-        j += 1
+        users, items = recommender.recommend(
+            chunk_users_items_df['user_id'].to_numpy(),
+            chunk_users_items_df['product_id'].to_numpy())
+    # user_id = chunk_users_items_df['user_id'].iloc[0]
+    chunk_users_items_df = chunk_users_items_df.set_index('user_id')
+    # query_id = chunk_users_items_df['query_id'].iloc[0]
+    # j = 1
+    for user_tmp, item_tmp in zip(users, items):
+        results.append([
+            query_str_ids[test_users_query_id[user_tmp]],
+            product_str_ids[item_tmp],
+            users_num_items_recommended_online_test[user_tmp]
+        ])
+        # j += 1
+        users_num_items_recommended_online_test[user_tmp] += 1
 
 results_df = pd.DataFrame(results, columns=['query_id', 'product_id', 'rank'])
 results_df.to_csv(
-    f'data_phase1/data/{dataset.get_dataset_id(dataset_input_parameters)}_{method}_output.csv',
+    f'data_phase1/data/{method}_{dataset.get_dataset_id(dataset_input_parameters)}_output.csv',
     index=False)

@@ -417,6 +417,7 @@ class LightGCN(nn.Module):
         # print("save_txt")
     def __dropout_x(self, x, keep_prob):
         size = x.size()
+        # print(x)
         index = x.indices().t()
         values = x.values()
         random_index = torch.rand(len(values)) + keep_prob
@@ -439,10 +440,15 @@ class LightGCN(nn.Module):
         """
         propagate methods for lightGCN
         """       
+        # print('okwoe ekwqe')
         users_emb = self.embedding_user.weight
+        # print('32 321 31')
         items_emb = self.embedding_item.weight
+        # print('2 1321 41')
+        # print(users_emb,items_emb)
         all_emb = torch.cat([users_emb, items_emb])
         #   torch.split(all_emb , [self.num_users, self.num_items])
+        # print('ewq kewqk')
         embs = [all_emb]
         if self.dropout:
             if self.training:
@@ -452,8 +458,10 @@ class LightGCN(nn.Module):
                 g_droped = self.graph
         else:
             g_droped = self.graph    
+        # print('341')
         
         for layer in range(self.n_layers):
+            # print('5713231')
             if self.A_split:
                 temp_emb = []
                 for f in range(len(g_droped)):
@@ -505,11 +513,16 @@ class LightGCN(nn.Module):
        
     def forward(self, users, items):
         # compute embedding
+        # print("ewqiewjqiweqjiqew")
         all_users, all_items = self.computer()
+        # print("wjqiweqjiqew")
         # print('forward')
         #all_users, all_items = self.computer()
         users_emb = all_users[users]
         items_emb = all_items[items]
+        # print("w34iweqjiqew")
         inner_pro = torch.mul(users_emb, items_emb)
+        # print("w356weqjiqew")
         gamma     = torch.sum(inner_pro, dim=1)
+        # print("w356w99jiqew")
         return gamma

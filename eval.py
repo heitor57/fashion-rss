@@ -1,4 +1,5 @@
 
+import pyximport; pyximport.install()
 import metrics
 import pandas as pd
 import re
@@ -48,7 +49,7 @@ num_users = len(user_int_ids)
 num_items = len(product_int_ids)
 
 # results_df = pd.DataFrame(results, columns=['query_id', 'product_id', 'rank'])
-results_df =  pd.read_csv(f'data_phase1/data/{dataset.get_dataset_id(dataset_input_parameters)}_{method}_output.csv')
+results_df =  pd.read_csv(f'data_phase1/data/{method}_{dataset.get_dataset_id(dataset_input_parameters)}_output.csv')
 results_df = results_df.sort_values(['query_id','rank'])
 # validation_df = validation_df.sort_values(['query_id','rank'])
 print(results_df)

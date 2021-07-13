@@ -6,8 +6,17 @@ import copy
 import scipy.sparse
 import pandas as pd
 from collections import defaultdict
-import spotlight
-from spotlight.interactions import Interactions
+
+try:
+    import spotlight
+except ModuleNotFoundError:
+    pass
+
+try:
+    from spotlight.interactions import Interactions
+except ModuleNotFoundError:
+    pass
+
 import sklearn.preprocessing
 import sklearn
 import sklearn.linear_model
@@ -48,11 +57,16 @@ class NNVF(ValueFunction):
         self.loss_function.neural_network = neural_network
         self.num_batchs = num_batchs
         self.batch_size = batch_size
+        self.num_negatives = 1
         # self.loss_function.set_optimizer()
 
     def train(self, dataset_):
         print(dataset_)
-        dataset_ = dataset_.loc[dataset_.is_click > 0]
+        # dataset_ = dataset_.loc[dataset_.is_click > 0]
+        train_df = dataset_['train']
+        train_df = train_df.loc[train_df.is_click > 0]
+        train_df = train_df[['user_id','product_id','is_click']].drop_duplicates()
+        interactions_matrix = scipy.sparse.dok_matrix((dataset_['num_users'],dataset_['num_items']),dtype=np.int32)
         self.loss_function.set_optimizer()
         t = tqdm(range(self.num_batchs))
         if isinstance(self.neural_network, (neural_networks.PoolNet)):
@@ -62,12 +76,29 @@ class NNVF(ValueFunction):
             print(users_consumed_items)
         for _ in t:
             sampled_dataset_ = dataset.sample_fixed_size(
-                dataset_, self.batch_size)
+                dataset_['train'], self.batch_size)
+
+            negatives = []
+            users = sampled_dataset_.user_id.to_numpy()
+            for i in range(len(sampled_dataset_)):
+                user =users[i]
+                for _ in range(self.num_negatives):
+                    while True:
+                        # user = np.random.randint(dataset_['num_users'])
+                        item = np.random.randint(dataset_['num_items'])
+                        negatives.append([user,item,0])
+                        if (user, item) not in interactions_matrix:
+                            break
+
+            negatives_df=pd.DataFrame(negatives,columns=['user_id','product_id','is_click']).astype(np.int32)
+            # negatives_df.columns = 
+            neg = torch.from_numpy(negatives_df.product_id.to_numpy())
+            # sampled_dataset=pd.concat([sampled_dataset,negatives_df],axis=0)
             # print(torch.tensor(sampled_dataset.iloc[:, 0].to_numpy())))
             if isinstance(self.neural_network, (neural_networks.BilinearNet,neural_networks.LightGCN)):
-                neg = torch.from_numpy(
-                    np.random.randint(0, self.neural_network._num_items,
-                                      len(sampled_dataset_)))
+                # neg = torch.from_numpy(
+                    # np.random.randint(0, self.neural_network._num_items,
+                                      # len(sampled_dataset_)))
                 loss = self.loss_function.compute(
                     torch.tensor(sampled_dataset_['user_id'].to_numpy()),
                     torch.tensor(sampled_dataset_['product_id'].to_numpy()),
@@ -91,17 +122,17 @@ class NNVF(ValueFunction):
                 loss /= count
             elif isinstance(self.neural_network,
                             (neural_networks.PopularityNet)):
-                neg = torch.from_numpy(
-                    np.random.randint(0, self.neural_network._num_items,
-                                      len(sampled_dataset_)))
+                # neg = torch.from_numpy(
+                    # np.random.randint(0, self.neural_network._num_items,
+                                      # len(sampled_dataset_)))
                 loss = self.loss_function.compute(None,
                     torch.tensor(sampled_dataset_['product_id'].to_numpy()), neg)
             elif isinstance(self.neural_network,
                             (neural_networks.ContextualPopularityNet)):
                 # print(
-                neg = torch.from_numpy(
-                    np.random.randint(0, self.neural_network._num_items,
-                                      len(sampled_dataset_)))
+                # neg = torch.from_numpy(
+                    # np.random.randint(0, self.neural_network._num_items,
+                                      # len(sampled_dataset_)))
                 loss = self.loss_function.compute(sampled_dataset_,
                     torch.tensor(sampled_dataset_['product_id'].to_numpy()), neg)
                 # sampled_dataset
@@ -136,7 +167,7 @@ class RandomVF(ValueFunction):
     def train(self, dataset_):
         pass
 
-    def predict(self, users, items):
+    def predict(self, users, items, context):
         v = np.random.random(len(users))
         return v
 
@@ -258,8 +289,9 @@ class PopularVF(ValueFunction):
 
 class SVDVF(ValueFunction):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, num_lat, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.num_lat = num_lat
 
     def train(self, dataset_):
         train= dataset_['train']
@@ -270,14 +302,15 @@ class SVDVF(ValueFunction):
         spm = scipy.sparse.csr_matrix((train.is_click,(train.user_id,train.product_id)),shape=(dataset_['num_users'], dataset_['num_items']),dtype=float)
         # model=sklearn.decomposition.NMF(n_components=10)
         # model.fit_transform(spm)
-        u, s, vt = scipy.sparse.linalg.svds(spm,k=16)
-        self.U = u
+        u, s, vt = scipy.sparse.linalg.svds(spm,k=self.num_lat)
+        self.U = s*u
         self.V = vt.T
+        # self.s = s
 
         # NMF(n_components=50, init='random', random_state=0, verbose=True)
         pass
 
-    def predict(self, users, items):
+    def predict(self, users, items, contexts):
         values = np.empty(len(users))
         j = 0
         for u, i in zip(users,items):
@@ -297,28 +330,28 @@ class Coverage(ValueFunction):
 
         spm = scipy.sparse.csr_matrix((train.is_click,(train.user_id,train.product_id)),shape=(dataset_['num_users'], dataset_['num_items']),dtype=float)
 
-        # list_items = [i for i in tqdm(range(spm.shape[1]), position=0, leave=True) if spm[:,i].count_nonzero() >= 1]
-        # list_users = [u for u in tqdm(range(spm.shape[0]), position=0, leave=True) if spm[u,:].count_nonzero() >= 1]
+        list_items = [i for i in tqdm(range(spm.shape[1]), position=0, leave=True) if spm[:,i].count_nonzero() >= 1]
+        list_users = [u for u in tqdm(range(spm.shape[0]), position=0, leave=True) if spm[u,:].count_nonzero() >= 1]
 
-        list_items = pickle.load(open("data_phase1/coverage_list_items.pk", "rb"))
-        list_users = pickle.load(open("data_phase1/coverage_list_users.pk", "rb"))
+        # list_items = pickle.load(open("data_phase1/coverage_list_items.pk", "rb"))
+        # list_users = pickle.load(open("data_phase1/coverage_list_users.pk", "rb"))
 
         # pickle.dump(list_items, open("coverage_list_items.pk", "wb"))
         # pickle.dump(list_users, open("coverage_list_users.pk", "wb"))
 
-        # dict_nonzero = {i: set(spm[:,i].nonzero()[0]) for i in tqdm(list_items, position=0, leave=True)}
+        dict_nonzero = {i: set(spm[:,i].nonzero()[0]) for i in tqdm(list_items, position=0, leave=True)}
 
         # pickle.dump(dict_nonzero, open("coverage_dict_nonzero.pk", "wb"))
-        dict_nonzero = pickle.load(open("data_phase1/coverage_dict_nonzero.pk", "rb"))
+        # dict_nonzero = pickle.load(open("data_phase1/coverage_dict_nonzero.pk", "rb"))
 
-        # coverage = [(i, len(dict_nonzero[i].intersection(set(list_users)))) for i in tqdm(list_items, position=0, leave=True)]
-        # coverage.sort(key=lambda x: x[1], reverse=True)
-        # self.coverage = dict(coverage)
+        coverage = [(i, len(dict_nonzero[i].intersection(set(list_users)))) for i in tqdm(list_items, position=0, leave=True)]
+        coverage.sort(key=lambda x: x[1], reverse=True)
+        self.coverage = dict(coverage)
 
         # pickle.dump(self.coverage, open("data_phase1/coverage.pk", "wb"))
-        self.coverage = pickle.load(open("data_phase1/coverage.pk", "rb"))
+        # self.coverage = pickle.load(open("data_phase1/coverage.pk", "rb"))
 
-    def predict(self, users, items):
+    def predict(self, users, items,context):
         result = []
         for item in items:
             if item in self.coverage:

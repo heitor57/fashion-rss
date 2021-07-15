@@ -1,4 +1,5 @@
 from mf.SVDPlusPlus import SVDPlusPlus
+import sklearn.utils
 from sys import meta_path
 import re
 import time
@@ -467,20 +468,23 @@ class Stacking(ValueFunction):
 
         # user_ids = train_df.user_id.unique()
         # print("calc")
+        train_df_original=dataset['train']
 
         user_features_df = pd.DataFrame()
         start_time = time.time()
-        user_features_df['num_sessions'] = train_df.groupby('user_id')['session_id'].nunique()
+        user_features_df['num_sessions'] = train_df_original.groupby('user_id')['session_id'].nunique()
         print("%s seconds" % (time.time() - start_time))
         start_time = time.time()
-        user_features_df['observed_items'] =train_df.groupby('user_id')['product_id'].nunique()
+        user_features_df['observed_items'] =train_df_original.groupby('user_id')['product_id'].nunique()
         print("%s seconds" % (time.time() - start_time))
         start_time = time.time()
-        user_features_df['items_clicked'] =train_df.loc[train_df.is_click==1].groupby('user_id')['product_id'].nunique()
+        user_features_df['items_clicked'] =train_df_original.loc[train_df_original.is_click==1].groupby('user_id')['product_id'].nunique()
         print("%s seconds" % (time.time() - start_time))
         start_time = time.time()
-        user_features_df['mean_user_price'] =train_df.loc[train_df.is_click==1].groupby('user_id')['product_price'].mean()
+        user_features_df['mean_user_price'] =train_df_original.loc[train_df_original.is_click==1].groupby('user_id')['product_price'].mean()
         print("%s seconds" % (time.time() - start_time))
+        print(user_features_df)
+        print(user_features_df.describe())
         self.users_features = user_features_df.to_dict()
         d = {
             'items_clicked':0,
@@ -489,6 +493,7 @@ class Stacking(ValueFunction):
             'mean_price':0,
             }
         self.users_features = defaultdict(lambda: copy.copy(d),self.users_features)
+        # self.users_features = defaultdict(lambda: copy.copy(d),self.users_features)
             # dataset["train"][model.name] = items_values[model.name]
         
         user_features = pd.DataFrame([self.users_features[i] for i in train_df.user_id]).to_numpy()
@@ -502,14 +507,20 @@ class Stacking(ValueFunction):
         features = np.hstack([features,user_features])
 
         self.items_columns_to_dummies = [
-            'season', 'collection','gender','category_id_l1','category_id_l2', 'season_year'
+            'season', 
+            # 'collection',
+            'gender',
+            # 'category_id_l1','category_id_l2', 
+            'season_year'
         ]
         pattern = '|'.join(self.items_columns_to_dummies)
         self.items_columns = [c for c in attributes_df.columns if re.match(pattern, c)]
         print('number of items columns',len(self.items_columns))
         self.users_columns_to_dummies = [
-            'device_category', 'device_platform',
-            'user_tier','user_country'
+            'device_category', 
+            'device_platform',
+            'user_tier',
+            # 'user_country'
         ]
         pattern = '|'.join(self.users_columns_to_dummies)
         self.users_columns = [c for c in train_df.columns if re.match(pattern, c)]
@@ -523,7 +534,10 @@ class Stacking(ValueFunction):
         # self.lr_items = sklearn.linear_model.LogisticRegression()
         # self.meta_learner = sklearn.linear_model.LinearRegression()
         # print(features)
-        self.meta_learner.fit(features, train_df["is_click"])
+        meta_learner_result= self.meta_learner.fit(features, train_df["is_click"])
+        print(pd.DataFrame(meta_learner_result.cv_results_))
+        pd.DataFrame(meta_learner_result.cv_results_).to_csv('data_phase1/data/debug/search.csv')
+
         # print(self.meta_learner.intercept_)
         # print(self.meta_learner.coef_)
         # lr_items.intercept_ + lr_items.coef_[0] * PopularVF + lr_items.coef_[1] * NCFVF

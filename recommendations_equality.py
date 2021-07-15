@@ -4,6 +4,21 @@ import argparse
 import scipy.stats
 import pandas as pd
 
+dataset_input_parameters = {
+    'dummies': {
+        'base': {
+            'split': {
+                'base': {
+                    'farfetch': {}
+                },
+                'train_size': 0.8
+            }
+        }
+    }
+}
+dataset_input_settings = dataset.dataset_settings_factory(
+    dataset_input_parameters)
+
 argparser = argparse.ArgumentParser()
 # argparser.add_argument('-b', type=str)
 argparser.add_argument('-m1', type=str)
@@ -14,9 +29,9 @@ args = argparser.parse_args()
 
 
 # results_df.to_csv(f'data_phase1/data/{method}_output.csv'
-results_df1 =  pd.read_csv(f'data_phase1/data/{args.m1}_output.csv')
+results_df1 =  pd.read_csv(f'data_phase1/data/{args.m1}_{dataset.get_dataset_id(dataset_input_parameters)}_output.csv')
 results_df1 = results_df1.sort_values(['query_id','product_id']).set_index('query_id')
-results_df2 =  pd.read_csv(f'data_phase1/data/{args.m2}_output.csv')
+results_df2 =  pd.read_csv(f'data_phase1/data/{args.m2}_{dataset.get_dataset_id(dataset_input_parameters)}_output.csv')
 results_df2 = results_df2.sort_values(['query_id','product_id']).set_index('query_id')
 
 kendall = 0

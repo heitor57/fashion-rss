@@ -2,6 +2,7 @@ from collections import defaultdict
 import pandas as pd
 import sklearn.ensemble
 import sklearn.tree
+import sklearn.model_selection
 import sklearn.neural_network
 try:
     import spotlight
@@ -121,17 +122,21 @@ num_items = len(product_int_ids)
 print('users', num_users, 'items', num_items)
 if method == 'bi':
 
-    loss_function = loss_functions.BPRLoss(1e-4, 0.001)
-    nn = neural_networks.BilinearNet(num_users,
-                                     num_items,
-                                     constants.EMBEDDING_DIM,
-                                     sparse=False)
+    loss_function = loss_functions.BPRLoss(1e-1, 0.0001)
+    nn = neural_networks.BilinearNet(num_users, num_items, 32, sparse=False)
     # nn = neural_networks.PoolNet(num_items,constants.EMBEDDING_DIM)
     # nn = neural_networks.PopularityNet(num_items)
-    nnvf = value_functions.NNVF(nn, loss_function)
+    nnvf = value_functions.NNVF(nn,
+                                loss_function,
+                                num_batchs=20,
+                                batch_size=300000)
 
     recommender = recommenders.NNRecommender(nnvf, name=method)
-    recommender.train(train_normalized_df)
+    recommender.train({
+        'train': train_normalized_df,
+        'num_users': num_users,
+        'num_items': num_items,
+    })
 elif method == 'random':
     vf = value_functions.RandomVF()
     recommender = recommenders.SimpleRecommender(vf, name=method)
@@ -265,17 +270,16 @@ elif method == 'contextualpopularitynet':
     # plot.figure.savefig('contextualpopularitynet_input_layer.png')
 
 elif method == 'ncf':
-    nn = neural_networks.NCF(num_users, num_items, 8,4,
-                             0.0, 'NeuMF-end')
+    nn = neural_networks.NCF(num_users, num_items, 8, 4, 0.0, 'NeuMF-end')
     nnvf = value_functions.GeneralizedNNVF(
         neural_network=nn,
         loss_function=torch.nn.BCEWithLogitsLoss(),
         optimizer=torch.optim.Adam(nn.parameters(), lr=0.01),
-        epochs=60,
+        epochs=40,
         sample_function=lambda x: dataset.sample_fixed_size(x,
-                                                            len(x) // 5),
+                                                            len(x) // 10),
         # sample_function=lambda x: dataset.sample_fixed_size(x,100000),
-        num_negatives=10,
+        num_negatives=20,
     )
     recommender = recommenders.NNRecommender(nnvf, name=method)
     recommender.train({
@@ -355,58 +359,72 @@ elif method == 'stacking':
     vf = value_functions.PopularVF()
     PopularVF = vf
 
-    nn = neural_networks.NCF(num_users, num_items, constants.EMBEDDING_DIM, 4,
+    nn = neural_networks.NCF(num_users, num_items, 8, 4,
                              0.0, 'NeuMF-end')
     # NCFVF = value_functions.GeneralizedNNVF(
-        # neural_network=nn,
-        # loss_function=torch.nn.BCEWithLogitsLoss(),
-        # optimizer=torch.optim.Adam(nn.parameters(), lr=0.01),
-        # epochs=60,
-        # # epochs=1,
-        # sample_function=lambda x: dataset.sample_fixed_size(x,
-                                                            # len(x) // 10),
-        # num_negatives=10,
+    # neural_network=nn,
+    # loss_function=torch.nn.BCEWithLogitsLoss(),
+    # optimizer=torch.optim.Adam(nn.parameters(), lr=0.01),
+    # epochs=60,
+    # # epochs=1,
+    # sample_function=lambda x: dataset.sample_fixed_size(x,
+    # len(x) // 10),
+    # num_negatives=10,
     # )
     NCFVF = value_functions.GeneralizedNNVF(
         neural_network=nn,
         loss_function=torch.nn.BCEWithLogitsLoss(),
         optimizer=torch.optim.Adam(nn.parameters(), lr=0.01),
-        epochs=100,
+        # epochs=1,
+        epochs=80,
         sample_function=lambda x: dataset.sample_fixed_size(x,
                                                             len(x) // 10),
         # sample_function=lambda x: dataset.sample_fixed_size(x,100000),
-        num_negatives=100,
+        num_negatives=20,
     )
 
     models = [PopularVF, NCFVF]
 
-    meta_learner = sklearn.neural_network.MLPRegressor(
-        hidden_layer_sizes=[100, 100, 100],
-        activation='relu',
-        solver='adam',
-        alpha=0.0001,
-        batch_size='auto',
-        learning_rate='constant',
-        learning_rate_init=0.001,
-        power_t=0.5,
-        max_iter=200,
-        shuffle=True,
-        random_state=None,
-        tol=0.0001,
-        verbose=True,
-        warm_start=False,
-        momentum=0.9,
-        nesterovs_momentum=True,
-        early_stopping=False,
-        validation_fraction=0.1,
-        beta_1=0.9,
-        beta_2=0.999,
-        epsilon=1e-08,
-        n_iter_no_change=10,
-        max_fun=15000)
+    meta_learner_parameters = [
+        dict(hidden_layer_sizes=[[20, 15, 10], [50, 30, 10], [10, 10, 10],
+                                 [10, 5, 3], [20, 20], [100, 100, 100],
+                                 [80, 60, 40, 20], [40, 20, 10],
+                                 [10, 10, 10, 10, 10]],),
+    ]
+
+    # dict(
+    # hidden_layer_sizes=[20, 15, 10],
+    # activation='relu',
+    # solver='adam',
+    # alpha=0.0001,
+    # batch_size='auto',
+    # learning_rate='constant',
+    # learning_rate_init=0.001,
+    # power_t=0.5,
+    # max_iter=200,
+    # shuffle=True,
+    # random_state=None,
+    # tol=0.0001,
+    # verbose=True,
+    # warm_start=False,
+    # momentum=0.9,
+    # nesterovs_momentum=True,
+    # early_stopping=False,
+    # validation_fraction=0.1,
+    # beta_1=0.9,
+    # beta_2=0.999,
+    # epsilon=1e-08,
+    # n_iter_no_change=10,
+    # max_fun=15000),
+    meta_learner = sklearn.model_selection.GridSearchCV(
+        sklearn.neural_network.MLPRegressor(),
+        meta_learner_parameters,
+        scoring='neg_root_mean_squared_error',
+        n_jobs=-1,verbose=3
+        )
     vf = value_functions.Stacking(models=models, meta_learner=meta_learner)
     recommender = recommenders.SimpleRecommender(value_function=vf, name=method)
-
+    
     recommender.train({
         # 'train': train_normalized_df.sample(10000),
         'train': train_normalized_df,
@@ -429,7 +447,7 @@ test_users_query_id = {k: v[0] for k, v in test_users_query_id.items()}
 groups = [group for name, group in tqdm(test_normalized_df.groupby('query_id'))]
 # executor = ProcessPoolExecutor(max_workers=4)
 num_groups = len(groups)
-chunksize = num_groups // 200
+chunksize = num_groups // 50
 groups_chunks = list(chunks(groups, chunksize))
 
 # if method == 'lightgcn':
@@ -443,7 +461,7 @@ print("Starting recommender...")
 
 # for name, group in tqdm(test_normalized_df.groupby('query_id')):
 users_num_items_recommended_online_test = defaultdict(lambda: 1)
-for groups_tmp in tqdm(groups_chunks,total=len(groups_chunks)):
+for groups_tmp in tqdm(groups_chunks, total=len(groups_chunks)):
     chunk_users_items_df = pd.concat(groups_tmp, axis=0)
     if method in ['contextualpopularitynet', 'stacking']:
         users, items = recommender.recommend(

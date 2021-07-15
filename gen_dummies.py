@@ -19,7 +19,7 @@ import utils
 import argparse
 
 # dataset_input_parameters = {'farfetchfinal':{}}
-dataset_input_parameters = {'split':{'base': {'farfetch':{}},'train_size':0.9 }}
+dataset_input_parameters = {'split':{'base': {'farfetch':{}},'train_size':0.8 }}
 dataset_input_settings = dataset.dataset_settings_factory(dataset_input_parameters)
 
 dataset_output_parameters = {'dummies':{'base': dataset_input_parameters}}
@@ -56,7 +56,7 @@ del test_df['is_test'], train_df['is_test']
 													# pattern)
 
 items_columns_to_dummies = [
-    'season', 'collection','gender','category_id_l1','category_id_l2'
+    'season', 'collection','gender','category_id_l1','category_id_l2', 'season_year'
 ]
 
 attributes_df = dataset.create_dummies(attributes_df, items_columns_to_dummies)

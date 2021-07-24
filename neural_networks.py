@@ -1,4 +1,5 @@
 from torch import nn
+import torch.sparse
 import re
 import numpy as np
 import torch
@@ -109,34 +110,58 @@ class BilinearNet(nn.Module):
 
 class LSTMNet(nn.Module):
 
-    def __init__(self, num_items, embedding_dim, sparse=False):
-        super().__init__()
+    def __init__(self, num_items, embedding_dim,
+                 item_embedding_layer=None, sparse=False):
+
+        super(LSTMNet, self).__init__()
 
         self.embedding_dim = embedding_dim
 
-        self.item_embeddings = ScaledEmbedding(num_items,
-                                               embedding_dim,
-                                               sparse=sparse,
-                                               padding_idx=0)
-        self.item_biases = ZeroEmbedding(num_items,
-                                         1,
-                                         sparse=sparse,
+        if item_embedding_layer is not None:
+            self.item_embeddings = item_embedding_layer
+        else:
+            self.item_embeddings = ScaledEmbedding(num_items, embedding_dim,
+                                                   padding_idx=0,
+                                                   sparse=sparse)
+
+        self.item_biases = ZeroEmbedding(num_items, 1, sparse=sparse,
                                          padding_idx=0)
 
         self.lstm = nn.LSTM(batch_first=True,
                             input_size=embedding_dim,
                             hidden_size=embedding_dim)
 
-    def forward(self, item_sequences, item_ids):
+    def user_representation(self, item_sequences):
 
-        target_embedding = self.item_embeddings(item_ids)
-        user_representations, _ = self.lstm(
-            self.item_embeddings(item_sequences))
-        target_bias = self.item_biases(item_ids)
+        # Make the embedding dimension the channel dimension
+        sequence_embeddings = (self.item_embeddings(item_sequences)
+                               .permute(0, 2, 1))
+        # Add a trailing dimension of 1
+        sequence_embeddings = (sequence_embeddings
+                               .unsqueeze(3))
+        # Pad it with zeros from left
+        sequence_embeddings = (F.pad(sequence_embeddings,
+                                     (0, 0, 1, 0))
+                               .squeeze(3))
+        sequence_embeddings = sequence_embeddings.permute(0, 2, 1)
 
-        dot = (user_representations * target_embedding).sum(2)
+        user_representations, _ = self.lstm(sequence_embeddings)
+        user_representations = user_representations.permute(0, 2, 1)
 
-        return dot + target_bias
+        return user_representations[:, :, :-1], user_representations[:, :, -1]
+
+    def forward(self, user_representations, items):
+
+        target_embedding = (self.item_embeddings(items)
+                            .permute(0, 2, 1)
+                            .squeeze())
+        target_bias = self.item_biases(items).squeeze()
+
+        dot = ((user_representations * target_embedding)
+               .sum(1)
+               .squeeze())
+
+        return target_bias + dot
 
 
 class PoolNet(nn.Module):
@@ -197,51 +222,39 @@ class PopularityNet(nn.Module):
 
 class ContextualPopularityNet(nn.Module):
 
-    def __init__(self, num_items, items_attributes,users_columns, sparse=False):
+    def __init__(self, num_items, items_attributes,users_columns, sparse=False,num_layers=4,dropout=0):
         super().__init__()
         self._num_items = num_items
-        # self.item_biases = ZeroEmbedding(num_items,
-                                         # 1,
-                                         # sparse=sparse,
-                                         # padding_idx=0)
-        
         self.items_attributes = torch.tensor(items_attributes.to_numpy())
-        # input_size = self.context_size+len(items_attributes.columns)
-        # if hlayers == None:
-            # hlayers= 
         item_context_size = len(items_attributes.columns)
         self.users_columns = users_columns
-        input_size = len(users_columns)+item_context_size
-        print('input_size',input_size)
-        hlayers= nn.Sequential(
-            nn.Linear(input_size, input_size//2),
-            nn.ReLU(),
-            # nn.Linear(input_size//2, input_size//4),
-            nn.Linear(input_size//2, 1),
-            nn.ReLU(),
-            # nn.Linear(input_size//4, input_size//8),
-            # nn.ReLU(),
-            # nn.Linear(input_size//8, 1),
-            # nn.ReLU()
-        )
-        self.hlayers = hlayers
+        input_size = len(users_columns)+item_context_size + 1
+        self.factor_num = input_size
+        self.dropout = dropout
+        MLP_modules = []
+        las = 0
+        for i in range(num_layers):
+                input_size = self.factor_num//(2 ** i)
+                MLP_modules.append(nn.Dropout(p=self.dropout))
+                MLP_modules.append(nn.Linear(input_size, input_size//2))
+                # MLP_modules.append(nn.ReLU())
+                MLP_modules.append(nn.ReLU())
+                las = input_size//2
+        self.hlayers = nn.Sequential(*MLP_modules)
+        self.predict_layer = nn.Linear(las,1)
+        self.final_function = nn.ReLU()
+        # self.final_function = nn.Sigmoid()
+        # self.hlayers = hlayers
+        self.item_biases = ZeroEmbedding(num_items,
+                                         1,
+                                         sparse=sparse,
+                                         padding_idx=0)
 
 
     def forward(self, users_context, items_id):
-        # print(users_context.shape)
-        # print(users_context[self.users_columns])
-        # print(users_context[self.users_columns].shape)
         users_context= torch.tensor(users_context[self.users_columns].to_numpy(dtype=np.float32))
-        # target_bias = self.item_biases(item_ids)
-        # print(users_context.shape,self.items_attributes[items_id].shape)
-        # print(
-        t = torch.cat((users_context,self.items_attributes[items_id]),1)
-        # print(t)
-        # print(t.shape)
-        # print(t[0].shape)
-        # return self.hlayers(t[0])
-        # print(t.shape)
-        return self.hlayers(t)
+        t = torch.cat((self.item_biases(items_id),users_context,self.items_attributes[items_id]),1)
+        return self.final_function(self.predict_layer(self.hlayers(t))).flatten()
     def bpr_loss(self,users_context, pos, neg):
         # users_context= torch.tensor(users_context[self.users_columns].to_numpy())
         pos_scores=self.forward(users_context,pos)
@@ -358,3 +371,158 @@ class NCF(nn.Module):
 
 		prediction = self.predict_layer(concat)
 		return prediction.view(-1)
+
+class LightGCN(nn.Module):
+    def __init__(self,latent_dim_rec,lightGCN_n_layers,keep_prob,A_split,pretrain,user_emb,item_emb,dropout, graph,_num_users,_num_items,training):
+        super().__init__()
+        self.latent_dim_rec = latent_dim_rec
+        self.lightGCN_n_layers= lightGCN_n_layers
+        self.keep_prob = keep_prob
+        self.A_split = A_split
+        self.pretrain = pretrain
+        self.user_emb = user_emb
+        self.item_emb = item_emb
+        self.dropout = dropout
+        # self.config = config
+        self.graph = graph
+        self._num_items = _num_items
+        self._num_users = _num_users
+        self.training = training
+        self.__init_weight()
+
+    def __init_weight(self):
+        self.latent_dim = self.latent_dim_rec
+        self.n_layers = self.lightGCN_n_layers
+        self.keep_prob = self.keep_prob
+        self.A_split = self.A_split
+        self.embedding_user = torch.nn.Embedding(
+            num_embeddings=self._num_users, embedding_dim=self.latent_dim)
+        self.embedding_item = torch.nn.Embedding(
+            num_embeddings=self._num_items, embedding_dim=self.latent_dim)
+        if self.pretrain == 0:
+#             nn.init.xavier_uniform_(self.embedding_user.weight, gain=1)
+#             nn.init.xavier_uniform_(self.embedding_item.weight, gain=1)
+#             print('use xavier initilizer')
+# random normal init seems to be a better choice when lightGCN actually don't use any non-linear activation function
+            nn.init.normal_(self.embedding_user.weight, std=0.1)
+            nn.init.normal_(self.embedding_item.weight, std=0.1)
+        else:
+            self.embedding_user.weight.data.copy_(torch.from_numpy(self.user_emb))
+            self.embedding_item.weight.data.copy_(torch.from_numpy(self.item_emb))
+            print('use pretarined data')
+        self.f = nn.Sigmoid()
+        # self.Graph = self.dataset.getSparseGraph()
+        print(f"lgn is already to go(dropout:{self.dropout})")
+
+        # print("save_txt")
+    def __dropout_x(self, x, keep_prob):
+        size = x.size()
+        # print(x)
+        index = x.indices().t()
+        values = x.values()
+        random_index = torch.rand(len(values)) + keep_prob
+        random_index = random_index.int().bool()
+        index = index[random_index]
+        values = values[random_index]/keep_prob
+        g = torch.sparse.FloatTensor(index.t(), values, size)
+        return g
+    
+    def __dropout(self, keep_prob):
+        if self.A_split:
+            graph = []
+            for g in self.graph:
+                graph.append(self.__dropout_x(g, keep_prob))
+        else:
+            graph = self.__dropout_x(self.graph, keep_prob)
+        return graph
+    
+    def computer(self):
+        """
+        propagate methods for lightGCN
+        """       
+        # print('okwoe ekwqe')
+        users_emb = self.embedding_user.weight
+        # print('32 321 31')
+        items_emb = self.embedding_item.weight
+        # print('2 1321 41')
+        # print(users_emb,items_emb)
+        all_emb = torch.cat([users_emb, items_emb])
+        #   torch.split(all_emb , [self.num_users, self.num_items])
+        # print('ewq kewqk')
+        embs = [all_emb]
+        if self.dropout:
+            if self.training:
+                print("droping")
+                g_droped = self.__dropout(self.keep_prob)
+            else:
+                g_droped = self.graph
+        else:
+            g_droped = self.graph    
+        # print('341')
+        
+        for layer in range(self.n_layers):
+            # print('5713231')
+            if self.A_split:
+                temp_emb = []
+                for f in range(len(g_droped)):
+                    temp_emb.append(torch.sparse.mm(g_droped[f], all_emb))
+                side_emb = torch.cat(temp_emb, dim=0)
+                all_emb = side_emb
+            else:
+                # print(g_droped.shape,all_emb.shape)
+                # print(g_droped.dtype,all_emb.dtype)
+                all_emb = torch.sparse.mm(g_droped, all_emb)
+            embs.append(all_emb)
+        embs = torch.stack(embs, dim=1)
+        #print(embs.size())
+        light_out = torch.mean(embs, dim=1)
+        users, items = torch.split(light_out, [self._num_users, self._num_items])
+        return users, items
+    
+    def getUsersRating(self, users):
+        all_users, all_items = self.computer()
+        users_emb = all_users[users.long()]
+        items_emb = all_items
+        rating = self.f(torch.matmul(users_emb, items_emb.t()))
+        return rating
+    
+    def getEmbedding(self, users, pos_items, neg_items):
+        all_users, all_items = self.computer()
+        users_emb = all_users[users]
+        pos_emb = all_items[pos_items]
+        neg_emb = all_items[neg_items]
+        users_emb_ego = self.embedding_user(users)
+        pos_emb_ego = self.embedding_item(pos_items)
+        neg_emb_ego = self.embedding_item(neg_items)
+        return users_emb, pos_emb, neg_emb, users_emb_ego, pos_emb_ego, neg_emb_ego
+    
+    def bpr_loss(self, users, pos, neg):
+        (users_emb, pos_emb, neg_emb, 
+        userEmb0,  posEmb0, negEmb0) = self.getEmbedding(users.long(), pos.long(), neg.long())
+        reg_loss = (1/2)*(userEmb0.norm(2).pow(2) + 
+                         posEmb0.norm(2).pow(2)  +
+                         negEmb0.norm(2).pow(2))/float(len(users))
+        pos_scores = torch.mul(users_emb, pos_emb)
+        pos_scores = torch.sum(pos_scores, dim=1)
+        neg_scores = torch.mul(users_emb, neg_emb)
+        neg_scores = torch.sum(neg_scores, dim=1)
+        
+        loss = torch.mean(torch.nn.functional.softplus(neg_scores - pos_scores))
+        
+        return loss, reg_loss
+       
+    def forward(self, users, items):
+        # compute embedding
+        # print("ewqiewjqiweqjiqew")
+        all_users, all_items = self.computer()
+        # print("wjqiweqjiqew")
+        # print('forward')
+        #all_users, all_items = self.computer()
+        users_emb = all_users[users]
+        items_emb = all_items[items]
+        # print("w34iweqjiqew")
+        inner_pro = torch.mul(users_emb, items_emb)
+        # print("w356weqjiqew")
+        gamma     = torch.sum(inner_pro, dim=1)
+        # print("w356w99jiqew")
+        return gamma

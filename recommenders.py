@@ -27,7 +27,7 @@ class NNRecommender(Recommender):
         predict_value = self.value_function.predict(users,
                                                     items,
                                                     users_context=users_context)
-        idxs = np.argsort(predict_value.detach().numpy().flatten())[::-1]
+        idxs = np.argsort(predict_value)[::-1]
         # print(predict_value)
         # print(idxs)
         # input()
@@ -49,8 +49,8 @@ class SimpleRecommender(Recommender):
         super().__init__(*args, **kwargs)
         self.value_function = value_function
 
-    def recommend(self, users, items):
-        predict_value = self.value_function.predict(users, items)
+    def recommend(self, users, items, users_context=None):
+        predict_value = self.value_function.predict(users, items,users_context)
         idxs = np.argsort(predict_value)[::-1]
         return users[idxs], items[idxs]
 

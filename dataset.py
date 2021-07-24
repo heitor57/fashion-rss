@@ -1,4 +1,5 @@
 from utils import create_path_to_file
+import json
 import sklearn.decomposition
 import sklearn.feature_selection
 import pickle
@@ -45,11 +46,18 @@ def farfetch_train_test_normalization(train_df, test_df, attributes_df):
     user_int_ids = integer_map(user_ids)
     product_int_ids = integer_map(product_ids)
 
+    query_ids = np.unique(
+        np.hstack((train_df.query_id.unique(), test_df.query_id.unique())))
+
+    query_int_ids = integer_map(query_ids)
+
     train_df.user_id = train_df.user_id.map(lambda x: user_int_ids[x])
     train_df.product_id = train_df.product_id.map(lambda x: product_int_ids[x])
+    train_df.query_id = train_df.query_id.map(lambda x: query_int_ids[x])
 
     test_df.user_id = test_df.user_id.map(lambda x: user_int_ids[x])
     test_df.product_id = test_df.product_id.map(lambda x: product_int_ids[x])
+    test_df.query_id = test_df.query_id.map(lambda x: query_int_ids[x])
 
     # train_normalized_df = train_df.groupby(['user_id', 'product_id'
     # ])['is_click'].sum().reset_index()
@@ -71,33 +79,34 @@ def farfetch_train_test_normalization(train_df, test_df, attributes_df):
     # train_normalized_df = train_df.loc[
     # train_df['is_click'] > 0]
     # columns_to_dummies = [
-        # 'week', 'week_day', 'device_category', 'device_platform', 'user_tier',
-        # 'user_country'
+    # 'week', 'week_day', 'device_category', 'device_platform', 'user_tier',
+    # 'user_country'
     # ]
-        # test_df = pd.concat(
-            # [test_df, pd.get_dummies(test_df[column], prefix=column)], axis=1)
-        # del test_df[column]
+    # test_df = pd.concat(
+    # [test_df, pd.get_dummies(test_df[column], prefix=column)], axis=1)
+    # del test_df[column]
     # columns_to_dummies = [
-        # 'season', 'collection', 'category_id_l1', 'category_id_l2',
-        # 'category_id_l3', 'brand_id', 'season_year'
+    # 'season', 'collection', 'category_id_l1', 'category_id_l2',
+    # 'category_id_l3', 'brand_id', 'season_year'
     # ]
     # for column in columns_to_dummies:
-        # attributes_df = pd.concat([
-            # attributes_df,
-            # pd.get_dummies(attributes_df[column], prefix=column)
-        # ],
-                                  # axis=1)
-        # del attributes_df[column]
-    return train_df, test_df, attributes_df, user_int_ids, product_int_ids
+    # attributes_df = pd.concat([
+    # attributes_df,
+    # pd.get_dummies(attributes_df[column], prefix=column)
+    # ],
+    # axis=1)
+    # del attributes_df[column]
+    return train_df, test_df, attributes_df, user_int_ids, product_int_ids, query_int_ids
 
-def create_dummies(df,columns):
+
+def create_dummies(df, columns):
     tmp_df = df.copy()
     for column in columns:
         tmp_df = pd.concat(
-            [tmp_df,
-             pd.get_dummies(tmp_df[column], prefix=column)], axis=1)
+            [tmp_df, pd.get_dummies(tmp_df[column], prefix=column)], axis=1)
         del tmp_df[column]
     return tmp_df
+
 
 def dataset_accumulate_clicks(df):
     df = df.groupby(['user_id', 'product_id'])['is_click'].sum().reset_index()
@@ -143,11 +152,15 @@ def parquet_save(df, file_name):
     create_path_to_file(file_name)
     df.to_parquet(open(file_name, 'wb'))
 
+
 def pickle_save(obj, file_name):
     create_path_to_file(file_name)
-    pickle.dump(obj,open(file_name, 'wb'))
+    pickle.dump(obj, open(file_name, 'wb'))
+
+
 def pickle_load(file_name):
     return pickle.load(open(file_name, 'rb'))
+
 
 def one_split(df, train_rate):
     train_size = int(len(df) * train_rate)
@@ -180,13 +193,14 @@ def one_split(df, train_rate):
     print(test_df.shape)
     return train_df, test_df
 
-def get_df_columns_with_pattern(df,pattern):
-    return [
-            c for c in df.columns if re.match(pattern, c)
-            ]
-def select_top_features(df,columns):
+
+def get_df_columns_with_pattern(df, pattern):
+    return [c for c in df.columns if re.match(pattern, c)]
+
+
+def select_top_features(df, columns, k=32):
     selectkbest = sklearn.feature_selection.SelectKBest(
-        sklearn.feature_selection.chi2, k=32)
+        sklearn.feature_selection.chi2, k=k)
     selected_features_values = selectkbest.fit_transform(
         df[columns], df.is_click)
     selected_columns = [
@@ -196,7 +210,125 @@ def select_top_features(df,columns):
     # df[selected_columns] = selected_features_values
     return selected_columns
 
-def dimensionality_reduction(df):
-    decomposition = sklearn.decomposition.PCA(32)
-    result=decomposition.fit_transform(df)
-    return pd.DataFrame(result)
+
+def dimensionality_reduction(df, k=10, columns_name=""):
+    decomposition = sklearn.decomposition.PCA(k)
+    result = decomposition.fit_transform(df)
+    result = pd.DataFrame(result)
+    num_col = len(result.columns)
+    result.columns = [columns_name+"_"+str(i) for i in range(0, num_col)]
+    return result
+
+
+def sample_fixed_size(df, num_samples):
+    return df.sample(num_samples)
+
+
+# class Dataset:
+# def __init__(self,train_path, validation_path, attributes_path) -> None:
+# self.train_path = train_path
+
+# self.validation_path = validation_path
+# self.attributes_path = attributes_path
+# pass
+
+# class SplitDataset:
+# def __init__(self,train_path, validation_path, attributes_path) -> None:
+# self.train_path = train_path
+
+
+# self.validation_path = validation_path
+# self.attributes_path = attributes_path
+# pass
+# def get_dataset_id(name,parameters):
+    # return '{%s:'%name+json.dumps(parameters, separators=(',', ':'))+'}'
+
+def get_dataset_id(parameters):
+    return json.dumps(parameters, separators=(',', ':'))
+
+# def dataset_settings_factory(name,parameters):
+def dataset_settings_factory(parameters):
+    name = list(parameters.keys())[0]
+    pv = list(parameters.values())[0]
+    pv = parameters
+    dataset_id = get_dataset_id(parameters)
+    if name == 'farfetch':
+        return {
+            'train_path': 'data_phase1/train.parquet',
+            'validation_path': 'data_phase1/validation.parquet',
+            'attributes_path': 'data_phase1/attributes.parquet'
+        }
+    elif name == 'farfetchfinal':
+        return {
+            'train_path': 'data_phase1/train.parquet',
+            'validation_path': 'data_phase2/test.parquet',
+            'attributes_path': 'data_phase1/attributes.parquet'
+        }
+    # elif name == 'farfetchdummies':
+        # return {
+            # 'train_path':
+                # 'data_phase1/data/dummies/train.parquet',
+            # 'validation_path':
+                # 'data_phase1/data/dummies/validation.parquet',
+            # 'attributes_path':
+                # 'data_phase1/data/dummies/attributes.parquet',
+            # 'user_int_ids':
+                # 'data_phase1/data/dummies/user_int_ids.pickle',
+            # 'product_int_ids':
+                # 'data_phase1/data/dummies/product_int_ids.pickle',
+            # 'query_int_ids':
+                # 'data_phase1/data/dummies/query_int_ids.pickle',
+        # }
+    elif name == 'split':
+        return {
+            'train_path':
+                'data_phase1/data/{}_train.parquet'.format(dataset_id),
+            'validation_path':  # 'data_phase1/data/dummies/validation.parquet',
+                'data_phase1/data/{}_validation.parquet'.format(
+                    dataset_id),
+            'attributes_path':  # 'data_phase1/data/dummies/attributes.parquet',
+                'data_phase1/attributes.parquet',
+            'user_int_ids':None,
+            'product_int_ids':None,
+            'query_int_ids':None,
+        }
+    elif name == 'qrec':
+        return {
+            'train_path':
+                'data_phase1/data/{}_train.csv'.format(dataset_id),
+            'validation_path':  # 'data_phase1/data/dummies/validation.parquet',
+                'data_phase1/data/{}_validation.csv'.format(
+                    dataset_id),
+            'attributes_path':  # 'data_phase1/data/dummies/attributes.parquet',
+                'data_phase1/data/{}_attributes.parquet'.format(
+                    dataset_id),
+            'user_int_ids':
+                'data_phase1/data/{}_user_int_ids.parquet'.format(
+                    dataset_id),
+            'product_int_ids':
+                'data_phase1/data/{}_product_int_ids.parquet'.format(
+                    dataset_id),
+            'query_int_ids':
+                'data_phase1/data/{}_query_int_ids.parquet'.format(
+                    dataset_id),
+        }
+    else:
+        return {
+            'train_path':
+                'data_phase1/data/{}_train.parquet'.format(dataset_id),
+            'validation_path':  # 'data_phase1/data/dummies/validation.parquet',
+                'data_phase1/data/{}_validation.parquet'.format(
+                    dataset_id),
+            'attributes_path':  # 'data_phase1/data/dummies/attributes.parquet',
+                'data_phase1/data/{}_attributes.parquet'.format(
+                    dataset_id),
+            'user_int_ids':
+                'data_phase1/data/{}_user_int_ids.parquet'.format(
+                    dataset_id),
+            'product_int_ids':
+                'data_phase1/data/{}_product_int_ids.parquet'.format(
+                    dataset_id),
+            'query_int_ids':
+                'data_phase1/data/{}_query_int_ids.parquet'.format(
+                    dataset_id),
+        }

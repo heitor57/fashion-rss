@@ -399,6 +399,8 @@ def preprocess(dataset_input_parameters,dataset_output_parameters):
         interactions_df=interactions_df.rename(columns={'overall':'target','unixReviewTime':'timestamp','reviewerID':'user_id','asin':'item_id'})
         interactions_df=interactions_df.loc[interactions_df.target>=4]
         interactions_df.target=1
+        # interactions_df.loc[interactions_df.target<4] = 0
+        # interactions_df.loc[interactions_df.target>=4] = 1
 
         datetime =pd.to_datetime(interactions_df.reviewTime)
         days = datetime.dt.day_name().astype('category').cat.codes

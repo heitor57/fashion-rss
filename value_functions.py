@@ -456,7 +456,7 @@ class Stacking(ValueFunction):
        
         # self.dataset = dataset
         train_df = dataset['train']
-        train_df = train_df.loc[train_df['target'] == 1]
+        train_df_models = train_df.loc[train_df['target'] == 1]
         attributes_df = dataset['items_attributes']
         predicted_models_scores = []
         for i, model in enumerate(self.models):
@@ -464,89 +464,102 @@ class Stacking(ValueFunction):
             
             if isinstance(model,GeneralizedNNVF):
                 model.train(dataset)
-                # self.models[model_name] = pickle.load(open("model_ncf.pk", "rb"))
             elif isinstance(model,PopularVF):
                 model.train(dataset)
-
             i = 0
-            # items_value = np.zeros(len(dataset["train"]['item_id']))
-            # for name, group in tqdm(dataset["train"].groupby('query_id')):
-            predicted_scores = model.predict(train_df['user_id'].to_numpy(),train_df['item_id'].to_numpy())
-                # values = model.predict(group['user_id'].to_numpy(),group['item_id'].to_numpy())
-                # for v in values:    
-                    # items_value[i] = v
-                    # i+=1
+            predicted_scores = model.predict(train_df_models['user_id'].to_numpy(),train_df_models['item_id'].to_numpy())
             predicted_models_scores.append(predicted_scores)
         predicted_models_scores = np.array(predicted_models_scores).T
-        features = sklearn.preprocessing.StandardScaler().fit_transform(predicted_models_scores)
 
-        # user_ids = train_df.user_id.unique()
-        # print("calc")
-        train_df_original=dataset['train']
-
-        user_features_df = pd.DataFrame()
-        start_time = time.time()
-        user_features_df['num_sessions'] = train_df_original.groupby('user_id')['session_id'].nunique()
-        print("%s seconds" % (time.time() - start_time))
-        start_time = time.time()
-        user_features_df['observed_items'] =train_df_original.groupby('user_id')['item_id'].nunique()
-        print("%s seconds" % (time.time() - start_time))
-        start_time = time.time()
-        user_features_df['items_clicked'] =train_df_original.loc[train_df_original.target==1].groupby('user_id')['item_id'].nunique()
-        print("%s seconds" % (time.time() - start_time))
-        start_time = time.time()
-        user_features_df['mean_user_price'] =train_df_original.loc[train_df_original.target==1].groupby('user_id')['product_price'].mean()
-        print("%s seconds" % (time.time() - start_time))
-        print(user_features_df)
-        print(user_features_df.describe())
-        self.users_features = user_features_df.to_dict()
-        d = {
-            'items_clicked':0,
-            'observed_items':0,
-            'num_sessions':0,
-            'mean_price':0,
-            }
-        self.users_features = defaultdict(lambda: copy.copy(d),self.users_features)
+        if dataset['name'] == 'farfetch':
+            features = sklearn.preprocessing.StandardScaler().fit_transform(predicted_models_scores)
+            train_df_original=dataset['train']
+            user_features_df = pd.DataFrame()
+            start_time = time.time()
+            user_features_df['num_sessions'] = train_df_original.groupby('user_id')['session_id'].nunique()
+            print("%s seconds" % (time.time() - start_time))
+            start_time = time.time()
+            user_features_df['observed_items'] =train_df_original.groupby('user_id')['item_id'].nunique()
+            print("%s seconds" % (time.time() - start_time))
+            start_time = time.time()
+            user_features_df['items_clicked'] =train_df_original.loc[train_df_original.target==1].groupby('user_id')['item_id'].nunique()
+            print("%s seconds" % (time.time() - start_time))
+            start_time = time.time()
+            user_features_df['mean_user_price'] =train_df_original.loc[train_df_original.target==1].groupby('user_id')['product_price'].mean()
+            print("%s seconds" % (time.time() - start_time))
+            print(user_features_df)
+            print(user_features_df.describe())
+            self.users_features = user_features_df.to_dict()
+            d = {
+                'items_clicked':0,
+                'observed_items':0,
+                'num_sessions':0,
+                'mean_price':0,
+                }
+            self.users_features = defaultdict(lambda: copy.copy(d),self.users_features)
         # self.users_features = defaultdict(lambda: copy.copy(d),self.users_features)
             # dataset["train"][model.name] = items_values[model.name]
         
-        user_features = pd.DataFrame([self.users_features[i] for i in train_df.user_id]).to_numpy()
-        self.user_features_min_max_scaler= sklearn.preprocessing.MinMaxScaler()
-        print('without norm')
-        print(user_features)
-        user_features = self.user_features_min_max_scaler.fit_transform(user_features)
-        print('with norm')
-        print(user_features)
+            user_features = pd.DataFrame([self.users_features[i] for i in train_df.user_id]).to_numpy()
+            self.user_features_min_max_scaler= sklearn.preprocessing.MinMaxScaler()
+            user_features = self.user_features_min_max_scaler.fit_transform(user_features)
         # item_features = pd.DataFrame([self.users_features[i] for i in train_df.item_id]).to_numpy()
-        features = np.hstack([features,user_features])
 
-        self.items_columns_to_dummies = [
-            'season', 
-            'collection',
-            'gender',
-            'category_id_l1','category_id_l2', 
-            'season_year'
-        ]
-        pattern = '|'.join(self.items_columns_to_dummies)
-        self.items_columns = [c for c in attributes_df.columns if re.match(pattern, c)]
-        # make_embedding_construction(train_df,1/4,len())
-        print('number of items columns',len(self.items_columns))
-        self.users_columns_to_dummies = [
-            'device_category', 
-            'device_platform',
-            'user_tier',
-            'user_country',
-            'week', 'week_day',
-        ]
-        pattern = '|'.join(self.users_columns_to_dummies)
-        self.users_columns = [c for c in train_df.columns if re.match(pattern, c)]
-        print('number of users columns',len(self.users_columns))
-        self.attributes_df = attributes_df.sort_values('item_id')
-        
-        print(attributes_df[self.items_columns])
-        print(train_df[self.users_columns])
-        items_features = np.array([self.attributes_df.iloc[i][self.items_columns].to_numpy() for i in train_df.item_id])
-        features = np.hstack([features,train_df[self.users_columns].to_numpy(),items_features])
+
+            self.items_columns_to_dummies = [
+                'season', 
+                'collection',
+                'gender',
+                'category_id_l1','category_id_l2', 
+                'season_year'
+            ]
+            pattern = '|'.join(self.items_columns_to_dummies)
+            self.items_columns = [c for c in attributes_df.columns if re.match(pattern, c)]
+            # make_embedding_construction(train_df,1/4,len())
+            self.users_columns_to_dummies = [
+                'device_category', 
+                'device_platform',
+                'user_tier',
+                'user_country',
+                'week', 'week_day',
+            ]
+            pattern = '|'.join(self.users_columns_to_dummies)
+            self.users_columns = [c for c in train_df.columns if re.match(pattern, c)]
+            self.attributes_df = attributes_df.sort_values('item_id')
+            items_features = np.array([self.attributes_df.iloc[i][self.items_columns].to_numpy() for i in train_df.item_id])
+            features = np.hstack([features,user_features])
+            features = np.hstack([features,train_df[self.users_columns].to_numpy(),items_features])
+        elif dataset['name'] == 'amazon_fashion':
+            features = sklearn.preprocessing.StandardScaler().fit_transform(predicted_models_scores)
+            def df_json_convert(df):
+                df = df.fillna({i: {} for i in df.index})
+                return pd.json_normalize(df)
+    
+            res = df_json_convert(train_df['style'])
+            def filter_top_popular_features(res_filtered):
+                res_filtered = res_filtered.copy()
+                for i in res_filtered.columns:
+                    top_count = res_filtered[i].value_counts()[:100]
+                    res_filtered[i].loc[~res_filtered[i].isin(top_count.index)]= np.NAN
+                return res_filtered
+            new_res = filter_top_popular_features(res)
+            res_dummies=pd.get_dummies(new_res[['Color:','Size:','Metal Type:','Style:','Length:']])
+            pattern='|'.join(['Color:','Size:','Metal Type:','Style:','Length:'])
+            columns = [i for i in res_dummies.columns if re.match(pattern,i)]
+            def select_top_features(df, columns, k=32):
+                selectkbest = sklearn.feature_selection.SelectKBest(
+                    sklearn.feature_selection.chi2, k=k)
+                selected_features_values = selectkbest.fit_transform(
+                    df[columns], df['target'])
+                selected_columns = [
+                    v1 for v1, v2 in zip(columns, selectkbest.get_support()) if v2 == True
+                ]
+                return selected_columns
+
+            top_interaction_features = select_top_features(pd.concat([res_dummies,train_df['target']],axis=1),columns,200)
+            interaction_features = np.array(res_dummies[top_interaction_features])
+            features = np.hstack([features,interaction_features])
+
         # self.lr_items = sklearn.linear_model.LogisticRegression()
         # self.meta_learner = sklearn.linear_model.LinearRegression()
         # print(features)

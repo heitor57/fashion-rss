@@ -401,6 +401,7 @@ users = test_df.user_id.to_numpy()
 recommender = method_factory(args.m)
 
 train_method(recommender, method, {
+    'name': 'amazon_fashion',
     'train': train_df,
     'num_users': num_users,
     'num_items': num_items

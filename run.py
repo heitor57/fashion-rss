@@ -359,8 +359,7 @@ elif method == 'stacking':
     vf = value_functions.PopularVF()
     PopularVF = vf
 
-    nn = neural_networks.NCF(num_users, num_items, 8, 4,
-                             0.0, 'NeuMF-end')
+    nn = neural_networks.NCF(num_users, num_items, 8, 4, 0.0, 'NeuMF-end')
     # NCFVF = value_functions.GeneralizedNNVF(
     # neural_network=nn,
     # loss_function=torch.nn.BCEWithLogitsLoss(),
@@ -375,8 +374,8 @@ elif method == 'stacking':
         neural_network=nn,
         loss_function=torch.nn.BCEWithLogitsLoss(),
         optimizer=torch.optim.Adam(nn.parameters(), lr=0.01),
-        # epochs=1,
         epochs=80,
+        # epochs=1,
         sample_function=lambda x: dataset.sample_fixed_size(x,
                                                             len(x) // 10),
         # sample_function=lambda x: dataset.sample_fixed_size(x,100000),
@@ -386,10 +385,21 @@ elif method == 'stacking':
     models = [PopularVF, NCFVF]
 
     meta_learner_parameters = [
-        dict(hidden_layer_sizes=[[20, 15, 10], [50, 30, 10], [10, 10, 10],
-                                 [10, 5, 3], [20, 20], [100, 100, 100],
-                                 [80, 60, 40, 20], [40, 20, 10],
-                                 [10, 10, 10, 10, 10]],),
+        dict(
+            hidden_layer_sizes=[
+                # [20, 15, 10],
+                # [50, 30, 10],
+                [10, 10, 10],
+                [10, 8, 5],
+                [10, 5, 3],
+                [6, 6, 6,6],
+                [8, 8, 8,8],
+                [8, 6, 4,4],
+                # [20, 20],
+                # [100, 100, 100],
+                # [80, 60, 40, 20], [40, 20, 10],
+                # [10, 10, 10, 10, 10]
+            ],),
     ]
 
     # dict(
@@ -420,11 +430,11 @@ elif method == 'stacking':
         sklearn.neural_network.MLPRegressor(),
         meta_learner_parameters,
         scoring='neg_root_mean_squared_error',
-        n_jobs=-1,verbose=3
-        )
+        # n_jobs=-1,
+        verbose=3)
     vf = value_functions.Stacking(models=models, meta_learner=meta_learner)
     recommender = recommenders.SimpleRecommender(value_function=vf, name=method)
-    
+
     recommender.train({
         # 'train': train_normalized_df.sample(10000),
         'train': train_normalized_df,

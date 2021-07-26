@@ -1,4 +1,7 @@
 import torch
+import pyximport; pyximport.install()
+import metrics
+from tqdm import tqdm
 import loss_functions
 import json
 
@@ -45,3 +48,27 @@ def BPR_train_original(dataset, neural_network, loss_class, epoch, neg_k=1):
     # time_info = timer.dict()
     # timer.zero()
     return f"loss{aver_loss:.3f}"
+
+
+def eval_mrr(results_df,test_df):
+    test_dict = test_df.set_index(['user_id','item_id'])['target'].to_dict()
+    mrr =0
+    c =0
+    for name, group in tqdm(results_df.groupby('user_id')):
+        
+        user_id = group['user_id'].iloc[0]
+        # print(all_product_is_click)
+        # is_click=all_product_is_click[query_id]
+        # print(is_click)
+        # print(group['rank'])
+        # print(group.product_id)
+        # print(is_click)
+        mrr+= metrics.cython_rr(group.user_id.values,group.item_id.values,group['rank'].values,test_dict)
+        c+=1
+
+    print(mrr)
+    print(c)
+    print('mrr',mrr/c)
+    return mrr/c
+
+        

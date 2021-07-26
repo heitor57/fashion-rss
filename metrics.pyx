@@ -29,7 +29,11 @@ import numpy as np
 def cython_rr(long[:] query_ids,long[:] product_ids,long[:] ranks,dict is_click):
 
     for i in range(len(ranks)):  # Numba likes loops
-        if is_click[(query_ids[i],product_ids[i])] == 1:
-            return 1/ranks[i]
+        # print((query_ids[i],product_ids[i]),is_click[(query_ids[i],product_ids[i])])
+        if is_click[(query_ids[i],product_ids[i])] > 0:
+            # print('end')
+            # print()('h',1.0/ranks[i])
+            return 1.0/ranks[i]
+    # print('end here')
 
-    return 0
+    return -99999999

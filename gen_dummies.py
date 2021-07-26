@@ -34,7 +34,7 @@ train_df, test_df, attributes_df, user_int_ids, product_int_ids, query_int_ids =
 	dataset.parquet_load(file_name=dataset_input_settings['attributes_path']))
 
 users_columns_to_dummies = [
-	# 'week', 'week_day',
+	'week', 'week_day',
 	'device_category', 'device_platform',
 	'user_tier',
 	'user_country'
@@ -46,14 +46,12 @@ train_df['is_test'] = 0
 train_test_df = dataset.create_dummies(pd.concat([train_df,test_df],axis=0),users_columns_to_dummies)
 test_df = train_test_df.loc[train_test_df['is_test'] == 1].copy()
 train_df = train_test_df.loc[train_test_df['is_test'] == 0].copy()
+
 del test_df['is_test'], train_df['is_test']
 
 # items_columns_to_dummies = [
 # 	'season', 'collection','gender','category_id_l1','category_id_l2', 'attribute_values'
 # ]
-# pattern = '|'.join(users_columns_to_dummies)
-# columns = dataset.get_df_columns_with_pattern(train_df,
-													# pattern)
 
 items_columns_to_dummies = [
     'season', 'collection','gender','category_id_l1','category_id_l2', 'season_year'
@@ -80,9 +78,27 @@ attributes_df = dataset.create_dummies(attributes_df, items_columns_to_dummies)
 # for column in columns[]
 # train_df[]
 
-# selected_columns = dataset.select_top_features(train_normalized_df,
-												  # columns)
-# train_normalized_df = pd.concat([train_normalized_df.drop(columns, axis=1),train_normalized_df[selected_columns]],axis=
+# pattern = '|'.join(users_columns_to_dummies)
+# columns = dataset.get_df_columns_with_pattern(train_df,
+						    # pattern)
+# print('SELECTING TRAIN')
+# selected_columns = dataset.select_top_features(train_df, columns,32)
+# train_df = pd.concat([train_df.drop(columns, axis=1),train_df[selected_columns]],axis=1)
+# test_df = pd.concat([test_df.drop(columns, axis=1),test_df[selected_columns]],axis=1)
+
+
+# pattern = '|'.join(items_columns_to_dummies)
+# columns = dataset.get_df_columns_with_pattern(attributes_df,
+						    # pattern)
+
+# print('JOIN')
+# train_df_product_attributes = train_df.join(attributes_df[['product_id']+columns],on='product_id', how='left', lsuffix='_left', rsuffix='_right')
+
+# print('select train attributes_df')
+# selected_columns = dataset.select_top_features(train_df_product_attributes, columns,k=32)
+# attributes_df = pd.concat([attributes_df.drop(selected_columns, axis=1),attributes_df[selected_columns]],axis=1)
+# train_df_product_attributes
+
 dataset.parquet_save(train_df,
 					 dataset_output_settings['train_path'])
 

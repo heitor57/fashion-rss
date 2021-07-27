@@ -66,9 +66,48 @@ def eval_mrr(results_df,test_df):
         mrr+= metrics.cython_rr(group.user_id.values,group.item_id.values,group['rank'].values,test_dict)
         c+=1
 
-    print(mrr)
-    print(c)
-    print('mrr',mrr/c)
+    # print(mrr)
+    # print(c)
+    # print('mrr',mrr/c)
     return mrr/c
 
         
+def eval_ndcg(results_df,test_df):
+    test_df = test_df.loc[test_df.target>0]
+    test_dict = test_df.set_index(['user_id'])['item_id'].to_dict()
+    values_acc =0
+    count =0
+    for name, group in tqdm(results_df.groupby('user_id')):
+        
+        user_id = group['user_id'].iloc[0]
+        # print(all_product_is_click)
+        # is_click=all_product_is_click[query_id]
+        # print(is_click)
+        # print(group['rank'])
+        # print(group.product_id)
+        # print(is_click)
+        # values_acc+= metrics.ndcgk(set([test_dict[user_id]]),group.item_id.values,len(group))
+        values_acc+= metrics.ndcgk(set([test_dict[user_id]]),group.item_id.values,len(group))
+        count+=1
+
+    return values_acc/count
+
+def eval_hits(results_df,test_df):
+    test_df = test_df.loc[test_df.target>0]
+    test_dict = test_df.set_index(['user_id'])['item_id'].to_dict()
+    values_acc =0
+    count =0
+    for name, group in tqdm(results_df.groupby('user_id')):
+        
+        user_id = group['user_id'].iloc[0]
+        # print(all_product_is_click)
+        # is_click=all_product_is_click[query_id]
+        # print(is_click)
+        # print(group['rank'])
+        # print(group.product_id)
+        # print(is_click)
+        # values_acc+= metrics.ndcgk(set([test_dict[user_id]]),group.item_id.values,len(group))
+        values_acc+= test_dict[user_id] in group.item_id.values
+        count+=1
+
+    return values_acc/count

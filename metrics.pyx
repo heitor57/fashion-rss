@@ -36,4 +36,13 @@ def cython_rr(long[:] query_ids,long[:] product_ids,long[:] ranks,dict is_click)
             return 1.0/ranks[i]
     # print('end here')
 
-    return -99999999
+    return 0
+
+def ndcgk(actual, predicted, k):
+    idcg = 1.0
+    dcg = 1.0 if predicted[0] in actual else 0.0
+    for i,p in enumerate(predicted[1:]):
+        if p in actual:
+            dcg += 1.0 / np.log(i+2)
+        idcg += 1.0 / np.log(i+2)
+    return dcg / idcg

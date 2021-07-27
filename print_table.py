@@ -48,6 +48,18 @@ def statistic_test(x, y, p):
             return 'loss'
     else:
         return 'tie'
+METHODS_PRETTY_NAME = {
+        'bi': 'BilinearNet',
+        'ncf': 'NeuMF',
+        'svd': 'SVD',
+        'svdpp': 'SVD++',
+        'popular': 'Popular',
+        'random': 'Random',
+        'lightgcn': 'LightGCN',
+        'coverage': 'Coverage',
+        'stacking': 'MLP(LightGCN+Popular)',
+
+        }
 
 
 stat_result_symbols = {'gain': "↑", 'loss': "↓", 'tie': "⏺"}
@@ -119,7 +131,7 @@ for metric_name, methods_values in metrics_final_results.items():
     j=0
     final_table[0][1+i] = metric_name
     for method in args.m:
-        final_table[1+j][0] = method
+        final_table[1+j][0] = METHODS_PRETTY_NAME[method]
         final_table[1+j][1+i] = methods_values[method]
         j += 1
     i += 1

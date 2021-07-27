@@ -294,6 +294,11 @@ def dataset_settings_factory(parameters):
             'interactions_path': 'data/AMAZON_FASHION.json.gz',
             'items_path': 'data/meta_AMAZON_FASHION.json.gz',
         }
+    elif name == 'amazon_cloth':
+        return {
+            'interactions_path': 'data/Clothing_Shoes_and_Jewelry.json.gz',
+            # 'items_path': 'data/meta_AMAZON_FASHION.json.gz',
+        }
     elif name == 'farfetchfinal':
         return {
             'train_path': 'data_phase1/train.parquet',
@@ -380,7 +385,49 @@ def preprocess(dataset_input_parameters,dataset_output_parameters):
     dataset_output_settings = dataset_settings_factory(dataset_output_parameters)
 
     interactions_df=pd.DataFrame()
+    
     if list(dataset_input_parameters.keys())[0] == 'amazon_fashion':
+        def parse(path):
+          g = gzip.open(path, 'r')
+          for l in g:
+            yield json.loads(l)
+        
+        def getDF(path):
+          i = 0
+          df = {}
+          for d in parse(path):
+            df[i] = d
+            i += 1
+          return pd.DataFrame.from_dict(df, orient='index')
+
+        interactions_df=getDF(dataset_input_settings['interactions_path'])
+
+        interactions_df=interactions_df.rename(columns={'overall':'target','unixReviewTime':'timestamp','reviewerID':'user_id','asin':'item_id'})
+
+        print('interactions',interactions_df.shape)
+        print('users',interactions_df.user_id.nunique())
+        print('items',interactions_df.item_id.nunique())
+        print(interactions_df.groupby('user_id')['item_id'].count().value_counts()[:10])
+        interactions_df=interactions_df.loc[interactions_df.target>=4]
+        interactions_df.target=1
+        # interactions_df.loc[interactions_df.target<4] = 0
+        # interactions_df.loc[interactions_df.target>=4] = 1
+
+        datetime =pd.to_datetime(interactions_df.reviewTime)
+        days = datetime.dt.day_name().astype('category').cat.codes
+        days.name='day'
+        interactions_df=pd.concat([interactions_df,days],axis=1)
+        weeks =datetime.dt.isocalendar().week
+        interactions_df=pd.concat([interactions_df,weeks],axis=1)
+        interactions_df.timestamp= interactions_df.timestamp-interactions_df.timestamp.min()
+
+        users_history_size = interactions_df.groupby('user_id')['item_id'].count()
+        users_history_size=users_history_size.loc[users_history_size>=5]
+        interactions_df=interactions_df.loc[interactions_df.user_id.isin(users_history_size.index)]
+
+        interactions_df.item_id = interactions_df.item_id.astype('category').cat.codes
+        interactions_df.user_id = interactions_df.user_id.astype('category').cat.codes
+    elif list(dataset_input_parameters.keys())[0] == 'amazon_cloth':
         def parse(path):
           g = gzip.open(path, 'r')
           for l in g:
@@ -411,13 +458,14 @@ def preprocess(dataset_input_parameters,dataset_output_parameters):
         interactions_df.timestamp= interactions_df.timestamp-interactions_df.timestamp.min()
 
         users_history_size = interactions_df.groupby('user_id')['item_id'].count()
-        users_history_size=users_history_size.loc[users_history_size>=10]
+        users_history_size=users_history_size.loc[users_history_size>=5]
         interactions_df=interactions_df.loc[interactions_df.user_id.isin(users_history_size.index)]
 
         interactions_df.item_id = interactions_df.item_id.astype('category').cat.codes
         interactions_df.user_id = interactions_df.user_id.astype('category').cat.codes
 
-    interactions_df.to_parquet(dataset_output_settings['interactions_path'])
+    # interactions_df.to_parquet(dataset_output_settings['interactions_path'])
+    return interactions_df
 
 
 def train_test_split(interactions_df,split_parameters):

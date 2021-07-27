@@ -235,7 +235,7 @@ def method_factory(method):
         nnvf = value_functions.NNVF(nn,
                                     loss_function,
                                     num_batchs=2000,
-                                    batch_size=int(len(interactions_df)*0.9))
+                                    batch_size=int(len(interactions_df)*0.8))
         recommender = recommenders.NNRecommender(nnvf, name=method)
         # recommender.train(train_normalized_df)
     elif method == 'stacking':
@@ -307,21 +307,24 @@ def method_factory(method):
         LIGHTGCNVF = value_functions.NNVF(nn,
                                     loss_function,
                                     num_batchs=2000,
-                                    batch_size=int(len(train_df)*0.9))
+                                    batch_size=int(len(train_df)*0.8))
 
-        nn = neural_networks.NCF(num_users, num_items, 8, 4, 0.1, 'NeuMF-end')
-        NCFVF = value_functions.GeneralizedNNVF(
-            neural_network=nn,
-            loss_function=torch.nn.BCEWithLogitsLoss(),
-            optimizer=torch.optim.Adam(nn.parameters(), lr=0.01),
-            epochs=2000,
-            sample_function=lambda x: dataset.sample_fixed_size(
-                x,
-                len(x)),
-            # sample_function=lambda x: dataset.sample_fixed_size(x,100000),
-            num_negatives=1,
-        )
-        models = [PopularVF, LIGHTGCNVF,NCFVF]
+        # nn = neural_networks.NCF(num_users, num_items, 8, 4, 0.1, 'NeuMF-end')
+        # NCFVF = value_functions.GeneralizedNNVF(
+            # neural_network=nn,
+            # loss_function=torch.nn.BCEWithLogitsLoss(),
+            # optimizer=torch.optim.Adam(nn.parameters(), lr=0.01),
+            # epochs=2000,
+            # sample_function=lambda x: dataset.sample_fixed_size(
+                # x,
+                # len(x)),
+            # # sample_function=lambda x: dataset.sample_fixed_size(x,100000),
+            # num_negatives=1,
+        # )
+        # vf = 
+        # models = [PopularVF, LIGHTGCNVF,NCFVF,value_functions.SVDPPVF(num_lat=8)]
+        # models = [PopularVF, LIGHTGCNVF,NCFVF]
+        models = [PopularVF, LIGHTGCNVF]
 
         meta_learner_parameters = [
             dict(

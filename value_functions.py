@@ -196,10 +196,13 @@ class NNVF(ValueFunction):
         self.loss_function.set_optimizer()
         t = tqdm(range(self.num_batchs))
         if isinstance(self.neural_network, (neural_networks.PoolNet)):
+            def _tensfarray(x):
+                # print(torch.tensor(np.array(x).flatten(),dtype=torch.long))
+                return torch.tensor(np.array(x).flatten(),dtype=torch.long)
             users_consumed_items = train_df[[
                 'user_id', 'item_id'
-            ]].groupby('user_id').agg(lambda x: torch.tensor(np.array(list(x))))
-            print(users_consumed_items)
+            ]].groupby('user_id')['item_id'].apply(_tensfarray)
+            # print(users_consumed_items)
         for _ in t:
             sampled_dataset_ = dataset.sample_fixed_size(
                 dataset_['train'], self.batch_size)
@@ -237,18 +240,29 @@ class NNVF(ValueFunction):
                     # sampled_dataset['products_sampled'].to_numpy()),
                 )
             elif isinstance(self.neural_network, (neural_networks.PoolNet)):
+                sampled_dataset_users_ids = sampled_dataset_['user_id'].unique().to_numpy()
                 items_sequences = [
                     users_consumed_items.loc[i]
-                    for i in sampled_dataset_['user_id'].to_numpy()
+                    for i in sampled_dataset_users_ids
                 ]
+                # sampled_dataset_users_consumption=sampled_dataset_[['user_id','item_id']].groupby('user_id').apply(lambda x: torch.tensor(np.array(x),dtype=torch.long))
                 loss = 0
                 count = 0
                 for i, j, k in zip(
                         items_sequences,
-                        torch.tensor(sampled_dataset_['item_id'].to_numpy()),
-                        torch.tensor(sampled_dataset_['target'].to_numpy())):
-                    loss += self.loss_function.compute(i, j, k)
-                    count += 1
+                        torch.tensor(sampled_dataset_['item_id'].to_numpy(),dtype=torch.long),
+                        neg):
+                    # self.loss
+                    loss += self.loss_function.compute(
+                            i,j,k
+                            )
+                    count+=1
+                # loss = self.loss_function.compute(
+                        # items_sequences,
+                        # torch.tensor(sampled_dataset_['item_id'].to_numpy(),dtype=torch.long),
+                        # neg
+                        # )
+                # count += 1
                 loss /= count
             elif isinstance(self.neural_network,
                             (neural_networks.PopularityNet)):
@@ -299,7 +313,7 @@ class RandomVF(ValueFunction):
     def train(self, dataset_):
         pass
 
-    def predict(self, users, items, context):
+    def predict(self, users, items, context=None):
         v = np.random.random(len(users))
         return v
 
@@ -461,7 +475,7 @@ class SVDVF(ValueFunction):
         # NMF(n_components=50, init='random', random_state=0, verbose=True)
         pass
 
-    def predict(self, users, items, contexts):
+    def predict(self, users, items, contexts=None):
         values = np.empty(len(users))
         j = 0
         for u, i in zip(users, items):
@@ -525,7 +539,7 @@ class SVDPPVF(ValueFunction):
         # [::-1]][:self.result_list_size]
         return items_scores
 
-    def predict(self, users, items, contexts):
+    def predict(self, users, items, contexts=None):
         # values = np.empty(len(users))
         # test_uids = np.nonzero(np.sum(test_matrix > 0, axis=1).A.flatten())[0]
         # self_id = id(self)
@@ -591,7 +605,7 @@ class Coverage(ValueFunction):
         # pickle.dump(self.coverage, open("data_phase1/coverage.pk", "wb"))
         # self.coverage = pickle.load(open("data_phase1/coverage.pk", "rb"))
 
-    def predict(self, users, items, context):
+    def predict(self, users, items, context=None):
         result = []
         for item in items:
             if item in self.coverage:
@@ -652,10 +666,7 @@ class Stacking(ValueFunction):
         for i, model in enumerate(self.models):
             print('training model', model)
 
-            if isinstance(model, GeneralizedNNVF):
-                model.train(dataset)
-            elif isinstance(model, PopularVF):
-                model.train(dataset)
+            model.train(dataset)
             i = 0
             predicted_scores = model.predict(
                 train_df_models['user_id'].to_numpy(),

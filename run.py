@@ -270,7 +270,7 @@ elif method == 'contextualpopularitynet':
     # plot.figure.savefig('contextualpopularitynet_input_layer.png')
 
 elif method == 'ncf':
-    nn = neural_networks.NCF(num_users, num_items, 8, 4, 0.0, 'NeuMF-end')
+    nn = neural_networks.NCF(num_users, num_items, 8, 4, 0.1, 'NeuMF-end')
     nnvf = value_functions.GeneralizedNNVF(
         neural_network=nn,
         loss_function=torch.nn.BCEWithLogitsLoss(),

@@ -181,7 +181,7 @@ def method_factory(method):
             neural_network=nn,
             loss_function=torch.nn.BCEWithLogitsLoss(),
             optimizer=torch.optim.Adam(nn.parameters(), lr=0.01),
-            epochs=2000,
+            epochs=400,
             sample_function=lambda x: dataset.sample_fixed_size(
                 x,
                 len(x)),
@@ -332,10 +332,10 @@ def method_factory(method):
                     [10, 10, 10],
                     [10, 8, 5],
                     [10, 5, 3],
-                    # [5, 5],
-                    # [6, 6, 6, 6],
-                    # [8, 8, 8, 8],
-                    # [8, 6, 4, 4],
+                    [5, 5],
+                    [6, 6, 6, 6],
+                    [8, 8, 8, 8],
+                    [8, 6, 4, 4],
 
 
                     # [20, 15, 10],
@@ -395,7 +395,7 @@ def run_rec(recommender, interactions_df, interactions_matrix, train_df,
 
     groups = [group for name, group in tqdm(test_df.groupby('user_id'))]
     num_groups = len(groups)
-    chunksize = num_groups // num_groups
+    chunksize = num_groups // 50
     groups_chunks = list(chunks(groups, chunksize))
     print("Starting recommender...")
     users_num_items_recommended_online_test = defaultdict(lambda: 1)
@@ -429,7 +429,8 @@ def run_rec(recommender, interactions_df, interactions_matrix, train_df,
 
 num_negatives = 99
 
-dataset_input_parameters = {'amazon_fashion': {}}
+# dataset_input_parameters = {'amazon_fashion': {}}
+dataset_input_parameters = {'amazon_cloth': {}}
 
 dataset_input_parameters = {'preprocess': {'base': dataset_input_parameters}}
 

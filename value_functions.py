@@ -32,6 +32,10 @@ import numpy as np
 import neural_networks
 from tqdm import tqdm
 
+import pytorch_widedeep
+import pytorch_widedeep.preprocessing
+import pytorch_widedeep.models 
+import pytorch_widedeep.metrics 
 import pickle
 
 
@@ -893,10 +897,10 @@ class SpotlightVF(ValueFunction):
 
 class WideAndDeep(ValueFunction):
 
-    def __init__(self, models=None, meta_learner=None, *args, **kwargs):
+    def __init__(self, models=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.models = models
-        self.meta_learner = meta_learner
+        self._models = models
+        # self.meta_learner = meta_learner
 
     def train(self, dataset):
         self.dataset_train = dataset
@@ -905,19 +909,88 @@ class WideAndDeep(ValueFunction):
         train_df_models = train_df.loc[train_df['target'] == 1]
         # attributes_df = dataset['items_attributes']
         predicted_models_scores = []
-        for i, model in enumerate(self.models):
+        for i, model in enumerate(self._models):
             print('training model', model)
 
-            if isinstance(model, GeneralizedNNVF):
-                model.train(dataset)
-            elif isinstance(model, PopularVF):
-                model.train(dataset)
+            model.train(dataset)
             i = 0
             predicted_scores = model.predict(
                 train_df_models['user_id'].to_numpy(),
                 train_df_models['item_id'].to_numpy())
             predicted_models_scores.append(predicted_scores)
         predicted_models_scores = np.array(predicted_models_scores).T
+        predicted_models_scores_df = pd.DataFrame(predicted_models_scores,columns=[f'm{i}' for i in range(len(self._models))])
+        predicted_models_scores_columns = list(predicted_models_scores_df.columns)
+
+
+        self.columns_style = [
+            'Color:', 'Size:', 'Metal Type:', 'Style:', 'Length:'
+        ]
+        res = df_json_convert(train_df_models['style'])[self.columns_style]
+        for column in self.columns_style:
+            if column not in res.columns:
+                res[column] = pd.NA
+        res = res[self.columns_style]
+        df_train = pd.concat([train_df_models.reset_index(drop=True),res],axis=1)
+        df_train = pd.concat([df_train,predicted_models_scores_df],axis=1)
+        df_train[self.columns_style]=df_train[self.columns_style].fillna('NONE')
+        # print(df_train.isnull().sum() )
+        # print(df_train.info(verbose=True, null_counts=True) )
+        # print(df_train.shape, train_df.shape)
+        # print(train_df_models)
+        # print(res)
+
+
+        wide_cols = [
+            "day",
+            "week",
+        ] \
+                + predicted_models_scores_columns
+                # + self.columns_style \
+        cross_cols = [("day", "week")]
+        embed_cols = [
+            ("day", 3),
+            ("week", 8),
+            ("Color:", 16),
+            ("Metal Type:", 16),
+            ("Size:", 16),
+            ("Length:", 16),
+            ("Style:", 16),
+        ]
+        cont_cols = ["timestamp"] + predicted_models_scores_columns
+        target_col = "target"
+        # target
+        target = df_train[target_col].values
+
+        # wide
+        self._wide_preprocessor = pytorch_widedeep.preprocessing.WidePreprocessor(wide_cols=wide_cols, crossed_cols=cross_cols)
+        X_wide = self._wide_preprocessor.fit_transform(df_train)
+        wide = pytorch_widedeep.models.Wide(wide_dim=np.unique(X_wide).shape[0], pred_dim=1)
+
+        # deeptabular
+        self._tab_preprocessor = pytorch_widedeep.preprocessing.TabPreprocessor(embed_cols=embed_cols, continuous_cols=cont_cols)
+        X_tab = self._tab_preprocessor.fit_transform(df_train)
+        deeptabular = pytorch_widedeep.models.TabMlp(
+            mlp_hidden_dims=[30, 30],
+            column_idx=self._tab_preprocessor.column_idx,
+            embed_input=self._tab_preprocessor.embeddings_input,
+            continuous_cols=cont_cols,
+        )
+
+        # wide and deep
+        self._meta_learner = pytorch_widedeep.models.WideDeep(wide=wide, deeptabular=deeptabular)
+
+        # train the model
+        self._trainer = pytorch_widedeep.Trainer(self._meta_learner, objective="regression")
+        self._trainer.fit(
+            X_wide=X_wide,
+            X_tab=X_tab,
+            target=target,
+            n_epochs=100,
+            batch_size=100000,
+            val_split=0.1,
+        )
+
 
         # meta_learner_result= self.meta_learner.fit(features, train_df["target"])
         # print(pd.DataFrame(meta_learner_result.cv_results_))
@@ -925,17 +998,45 @@ class WideAndDeep(ValueFunction):
 
     def predict(self, users, items, interaction_context=None):
         result = []
-        models_values = []
-        for model in self.models:
+        predicted_models_scores = []
+        for model in self._models:
             values = model.predict(users, items)
-            models_values.append(values)
+            predicted_models_scores.append(values)
+        predicted_models_scores = np.array(predicted_models_scores).T
+        predicted_models_scores_df = pd.DataFrame(predicted_models_scores,columns=[f'm{i}' for i in range(len(self._models))])
 
-        models_values = np.array(models_values).T
-        features = sklearn.preprocessing.StandardScaler().fit_transform(
-            models_values)
+        interaction_context=interaction_context.reset_index(drop=True)
+        # predicted_models_scores_df = pd.DataFrame(models_values,columns=[f'm{i}' for i in range(len(self._models))])
+        self.columns_style = [
+            'Color:', 'Size:', 'Metal Type:', 'Style:', 'Length:'
+        ]
+        res = df_json_convert(interaction_context['style'])
+        for column in self.columns_style:
+            if column not in res.columns:
+                res[column] = pd.NA
+        res = res[self.columns_style]
+        # 1 print(res)
+        # print(interaction_context)
+        # print(res)
+        # print(predicted_models_scores_df)
+        df_train = pd.concat([interaction_context,res],axis=1)
+        df_train = pd.concat([df_train,predicted_models_scores_df],axis=1)
+        df_train[self.columns_style]=df_train[self.columns_style].fillna('NONE')
+        # print(df_train[self.columns_style])
+        # df_train = pd.concat([df_train,predicted_models_scores_df],axis=1)
+        X_wide = self._wide_preprocessor.fit_transform(df_train)
+        X_tab = self._tab_preprocessor.fit_transform(df_train)
 
-        interaction_features = self.interaction_context_transformer.transform(
-            interaction_context)
-        features = np.hstack([features, interaction_features])
-        result = self.meta_learner.predict(features)
+        # models_values = np.array(models_values).T
+        # features = sklearn.preprocessing.StandardScaler().fit_transform(
+            # models_values)
+
+        # interaction_features = self.interaction_context_transformer.transform(
+            # interaction_context)
+        # features = np.hstack([features, interaction_features])
+        result = self._trainer.predict(
+            X_wide=X_wide,
+            X_tab=X_tab,
+            )
+        # print(result,len(result),len(users))
         return result

@@ -73,6 +73,10 @@ def method_factory(method):
                                     batch_size=int(len(train_df)*0.9))
 
         recommender = recommenders.NNRecommender(nnvf, name=method)
+    elif method == 'embmlp':
+        vfs= [value_functions.PopularVF(),value_functions.SVDVF(num_lat=8)]
+        vf = value_functions.WideAndDeep(models=vfs)
+        recommender = recommenders.SimpleRecommender(vf, name=method)
     elif method == 'random':
         vf = value_functions.RandomVF()
         recommender = recommenders.SimpleRecommender(vf, name=method)
@@ -402,11 +406,11 @@ def run_rec(recommender, interactions_df, interactions_matrix, train_df,
     for groups_tmp in tqdm(groups_chunks, total=len(groups_chunks)):
         chunk_users_items_df = pd.concat(groups_tmp, axis=0)
         # print(chunk_users_items_df)
-        if method in ['contextualpopularitynet', 'stacking']:
+        if method in ['contextualpopularitynet', 'stacking', 'embmlp']:
             users, items = recommender.recommend(
                 chunk_users_items_df['user_id'].to_numpy(),
                 chunk_users_items_df['item_id'].to_numpy(),
-                users_context=chunk_users_items_df)
+                chunk_users_items_df)
         else:
             users, items = recommender.recommend(
                 chunk_users_items_df['user_id'].to_numpy(),
@@ -429,8 +433,8 @@ def run_rec(recommender, interactions_df, interactions_matrix, train_df,
 
 num_negatives = 99
 
-# dataset_input_parameters = {'amazon_fashion': {}}
-dataset_input_parameters = {'amazon_cloth': {}}
+dataset_input_parameters = {'amazon_fashion': {}}
+# dataset_input_parameters = {'amazon_cloth': {}}
 
 dataset_input_parameters = {'preprocess': {'base': dataset_input_parameters}}
 

@@ -387,8 +387,8 @@ elif method == 'stacking':
     meta_learner_parameters = [
         dict(
             hidden_layer_sizes=[
-                # [20, 15, 10],
-                # [50, 30, 10],
+                [20, 15, 10],
+                [50, 30, 10],
                 [10, 10, 10],
                 [10, 8, 5],
                 [10, 5, 3],

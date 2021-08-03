@@ -69,7 +69,8 @@ argparser.add_argument('-m', nargs='*')
 argparser.add_argument('-r', default='stacking')
 args = argparser.parse_args()
 
-dataset_input_parameters = {'amazon_fashion': {}}
+# dataset_input_parameters = {'amazon_fashion': {}}
+dataset_input_parameters = {'amazon_cloth': {}}
 
 dataset_input_parameters = {'preprocess': {'base': dataset_input_parameters}}
 

@@ -1,3 +1,4 @@
+dataset_name = 'amazon_cloth'
 from collections import defaultdict
 import scipy.sparse
 import pandas as pd
@@ -54,14 +55,24 @@ def train_method(recommender, method, data):
 
 def method_factory(method):
     if method == 'bi':
-        loss_function = loss_functions.BPRLoss(1e-3, 0.001)
-        nn = neural_networks.BilinearNet(num_users, num_items, 32, sparse=False)
-        # nn = neural_networks.PoolNet(num_items,constants.EMBEDDING_DIM)
-        # nn = neural_networks.PopularityNet(num_items)
-        nnvf = value_functions.NNVF(nn,
-                                    loss_function,
-                                    num_batchs=500,
-                                    batch_size=int(len(train_df)*0.9))
+        if dataset_name == 'amazon_fashion':
+            loss_function = loss_functions.BPRLoss(1e-3, 0.001)
+            nn = neural_networks.BilinearNet(num_users, num_items, 32, sparse=False)
+            # nn = neural_networks.PoolNet(num_items,constants.EMBEDDING_DIM)
+            # nn = neural_networks.PopularityNet(num_items)
+            nnvf = value_functions.NNVF(nn,
+                                        loss_function,
+                                        num_batchs=500,
+                                        batch_size=int(len(train_df)*0.9))
+        elif dataset_name == 'amazon_cloth':
+            loss_function = loss_functions.BPRLoss(1e-3, 0.01)
+            nn = neural_networks.BilinearNet(num_users, num_items, 1000, sparse=False)
+            # nn = neural_networks.PoolNet(num_items,constants.EMBEDDING_DIM)
+            # nn = neural_networks.PopularityNet(num_items)
+            nnvf = value_functions.NNVF(nn,
+                                        loss_function,
+                                        num_batchs=500,
+                                        batch_size=int(len(train_df)//10))
 
         recommender = recommenders.NNRecommender(nnvf, name=method)
     elif method == 'poolnet':
@@ -81,10 +92,17 @@ def method_factory(method):
         vf = value_functions.RandomVF()
         recommender = recommenders.SimpleRecommender(vf, name=method)
     elif method == 'svd':
-        vf = value_functions.SVDVF(num_lat=8)
+        
+        if dataset_name == 'amazon_fashion':
+            vf = value_functions.SVDVF(num_lat=8)
+        else:
+            vf = value_functions.SVDVF(num_lat=1000)
         recommender = recommenders.SimpleRecommender(vf, name=method)
     elif method == 'svdpp':
-        vf = value_functions.SVDPPVF(num_lat=8)
+        if dataset_name == 'amazon_fashion':
+            vf = value_functions.SVDPPVF(num_lat=8)
+        elif dataset_name == 'amazon_cloth':
+            vf = value_functions.SVDPPVF(num_lat=1000)
         recommender = recommenders.SimpleRecommender(vf, name=method)
     elif method == 'popular':
         vf = value_functions.PopularVF()
@@ -180,19 +198,34 @@ def method_factory(method):
         # plot.figure.savefig('contextualpopularitynet_input_layer.png')
 
     elif method == 'ncf':
-        nn = neural_networks.NCF(num_users, num_items, 8, 4, 0.1, 'NeuMF-end')
-        nnvf = value_functions.GeneralizedNNVF(
-            neural_network=nn,
-            loss_function=torch.nn.BCEWithLogitsLoss(),
-            optimizer=torch.optim.Adam(nn.parameters(), lr=0.01),
-            epochs=400,
-            sample_function=lambda x: dataset.sample_fixed_size(
-                x,
-                len(x)),
-            # sample_function=lambda x: dataset.sample_fixed_size(x,100000),
-            num_negatives=1,
-        )
-        recommender = recommenders.NNRecommender(nnvf, name=method)
+        if dataset_name == 'amazon_fashion':
+            nn = neural_networks.NCF(num_users, num_items, 8, 4, 0.1, 'NeuMF-end')
+            nnvf = value_functions.GeneralizedNNVF(
+                neural_network=nn,
+                loss_function=torch.nn.BCEWithLogitsLoss(),
+                optimizer=torch.optim.Adam(nn.parameters(), lr=0.01),
+                epochs=400,
+                sample_function=lambda x: dataset.sample_fixed_size(
+                    x,
+                    len(x)),
+                # sample_function=lambda x: dataset.sample_fixed_size(x,100000),
+                num_negatives=1,
+            )
+            recommender = recommenders.NNRecommender(nnvf, name=method)
+        elif dataset_name == 'amazon_cloth':
+            nn = neural_networks.NCF(num_users, num_items, 32*2, 4, 0.1, 'NeuMF-end')
+            nnvf = value_functions.GeneralizedNNVF(
+                neural_network=nn,
+                loss_function=torch.nn.BCEWithLogitsLoss(),
+                optimizer=torch.optim.Adam(nn.parameters(), lr=0.1),
+                epochs=500,
+                sample_function=lambda x: dataset.sample_fixed_size(
+                    x,
+                    len(x)//10),
+                # sample_function=lambda x: dataset.sample_fixed_size(x,100000),
+                num_negatives=1,
+            )
+            recommender = recommenders.NNRecommender(nnvf, name=method)
 
     elif method == 'coverage':
         vf = value_functions.Coverage()
@@ -221,25 +254,48 @@ def method_factory(method):
             dtype=torch.float,
             size=(num_users + num_items, num_users + num_items))
         scootensor = scootensor.coalesce()
-        keep_prob = 0.9
-        nn = neural_networks.LightGCN(latent_dim_rec=32,
-                                      lightGCN_n_layers=2,
-                                      keep_prob=keep_prob,
-                                      A_split=False,
-                                      pretrain=0,
-                                      user_emb=None,
-                                      item_emb=None,
-                                      dropout=1 - keep_prob,
-                                      graph=scootensor,
-                                      _num_users=num_users,
-                                      _num_items=num_items,
-                                      training=True)
 
-        loss_function = loss_functions.BPRLoss(1e-1, 0.001)
-        nnvf = value_functions.NNVF(nn,
-                                    loss_function,
-                                    num_batchs=2000,
-                                    batch_size=int(len(interactions_df)*0.8))
+        if dataset_name == 'amazon_fashion':
+            keep_prob = 0.9
+            nn = neural_networks.LightGCN(latent_dim_rec=32,
+                                          lightGCN_n_layers=2,
+                                          keep_prob=keep_prob,
+                                          A_split=False,
+                                          pretrain=0,
+                                          user_emb=None,
+                                          item_emb=None,
+                                          dropout=1 - keep_prob,
+                                          graph=scootensor,
+                                          _num_users=num_users,
+                                          _num_items=num_items,
+                                          training=True)
+
+            loss_function = loss_functions.BPRLoss(1e-1, 0.001)
+            nnvf = value_functions.NNVF(nn,
+                                        loss_function,
+                                        num_batchs=2000,
+                                        batch_size=int(len(interactions_df)*0.8))
+        elif dataset_name == 'amazon_cloth':
+            keep_prob = 0.9
+            nn = neural_networks.LightGCN(latent_dim_rec=32,
+                                          lightGCN_n_layers=2,
+                                          keep_prob=keep_prob,
+                                          A_split=False,
+                                          pretrain=0,
+                                          user_emb=None,
+                                          item_emb=None,
+                                          dropout=1 - keep_prob,
+                                          graph=scootensor,
+                                          _num_users=num_users,
+                                          _num_items=num_items,
+                                          training=True)
+
+            loss_function = loss_functions.BPRLoss(1e-1, 0.0001)
+            nnvf = value_functions.NNVF(nn,
+                                        loss_function,
+                                        num_batchs=400,
+                                        batch_size=int(len(interactions_df)//3))
+
         recommender = recommenders.NNRecommender(nnvf, name=method)
         # recommender.train(train_normalized_df)
     elif method == 'stacking':
@@ -433,8 +489,8 @@ def run_rec(recommender, interactions_df, interactions_matrix, train_df,
 
 num_negatives = 99
 
-dataset_input_parameters = {'amazon_fashion': {}}
-# dataset_input_parameters = {'amazon_cloth': {}}
+# dataset_input_parameters = {'amazon_fashion': {}}
+dataset_input_parameters = {dataset_name: {}}
 
 dataset_input_parameters = {'preprocess': {'base': dataset_input_parameters}}
 
@@ -472,7 +528,7 @@ users = test_df.user_id.to_numpy()
 recommender = method_factory(args.m)
 
 train_method(recommender, method, {
-    'name': 'amazon_fashion',
+    'name': dataset_name,
     'train': train_df,
     'num_users': num_users,
     'num_items': num_items
@@ -511,6 +567,7 @@ for i in range(5):
     ndcgs.append(ndcg)
     hit = utils.eval_hits(results_df,test_df)
     hits.append(hit)
+    print('ndcg',ndcg,'mrr',mrr,'hits',hits)
 
     
         

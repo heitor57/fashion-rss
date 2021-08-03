@@ -645,7 +645,7 @@ class Stacking(ValueFunction):
         self.meta_learner = meta_learner
 
     def preprocess_interaction_features(self, dataset_name, interactions_df):
-        if dataset_name == 'amazon_fashion':
+        if dataset_name in[ 'amazon_fashion','amazon_cloth']:
             res = df_json_convert(interactions_df['style'])
             new_res = filter_top_popular_features(res)
             res_dummies = pd.get_dummies(
@@ -754,7 +754,8 @@ class Stacking(ValueFunction):
                 features, train_df[self.users_columns].to_numpy(),
                 items_features
             ])
-        elif dataset['name'] == 'amazon_fashion':
+        # elif dataset['name'] == 'amazon_fashion':
+        elif dataset['name'] in[ 'amazon_fashion','amazon_cloth']:
             features = sklearn.preprocessing.StandardScaler().fit_transform(
                 predicted_models_scores)
             # interaction_features = self.preprocess_interaction_features(dataset['name'],train_df)

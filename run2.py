@@ -102,7 +102,7 @@ def method_factory(method):
         if dataset_name == 'amazon_fashion':
             vf = value_functions.SVDPPVF(num_lat=8)
         elif dataset_name == 'amazon_cloth':
-            vf = value_functions.SVDPPVF(num_lat=1000)
+            vf = value_functions.SVDPPVF(num_lat=500)
         recommender = recommenders.SimpleRecommender(vf, name=method)
     elif method == 'popular':
         vf = value_functions.PopularVF()
@@ -213,7 +213,7 @@ def method_factory(method):
             )
             recommender = recommenders.NNRecommender(nnvf, name=method)
         elif dataset_name == 'amazon_cloth':
-            nn = neural_networks.NCF(num_users, num_items, 32*2, 4, 0.1, 'NeuMF-end')
+            nn = neural_networks.NCF(num_users, num_items, 128, 4, 0.1, 'NeuMF-end')
             nnvf = value_functions.GeneralizedNNVF(
                 neural_network=nn,
                 loss_function=torch.nn.BCEWithLogitsLoss(),
@@ -366,7 +366,7 @@ def method_factory(method):
         loss_function = loss_functions.BPRLoss(1e-1, 0.001)
         LIGHTGCNVF = value_functions.NNVF(nn,
                                     loss_function,
-                                    num_batchs=2000,
+                                    num_batchs=400,
                                     batch_size=int(len(train_df)*0.8))
 
         # nn = neural_networks.NCF(num_users, num_items, 8, 4, 0.1, 'NeuMF-end')
@@ -436,7 +436,7 @@ def method_factory(method):
             meta_learner_parameters,
             scoring='neg_root_mean_squared_error',
             # n_jobs=-1,
-            verbose=1)
+            verbose=2)
         vf = value_functions.Stacking(models=models, meta_learner=meta_learner)
         recommender = recommenders.SimpleRecommender(value_function=vf,
                                                      name=method)
@@ -567,7 +567,7 @@ for i in range(5):
     ndcgs.append(ndcg)
     hit = utils.eval_hits(results_df,test_df)
     hits.append(hit)
-    print('ndcg',ndcg,'mrr',mrr,'hits',hits)
+    print('ndcg',ndcg,'mrr',mrr,'hits',hit)
 
     
         

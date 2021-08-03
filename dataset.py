@@ -444,12 +444,17 @@ def preprocess(dataset_input_parameters, dataset_output_parameters):
     elif list(dataset_input_parameters.keys())[0] == 'amazon_cloth':
 
         interactions_df = pd.read_parquet('data/amazon_clothing.parquet')
+        # users_history_size = interactions_df.groupby(
+            # 'reviewerID')['asin'].count()
+        # users_history_size = users_history_size.loc[users_history_size >= 5]
+        # interactions_df = interactions_df.loc[interactions_df.reviewerID.isin(
+            # users_history_size.index)]
 
         filtered_counts = interactions_df[['reviewerID', 'asin'
                                           ]].groupby('reviewerID').count()
         counts_probabilities = filtered_counts.value_counts(
         ) / filtered_counts.value_counts().sum()
-        num_users = 10000
+        num_users = 2000
 
         num_interactions_users = filtered_counts.reset_index().groupby(
             'asin').agg(list)['reviewerID'].to_dict()

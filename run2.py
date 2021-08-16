@@ -538,18 +538,19 @@ np.random.seed(1)
 mrrs = []
 ndcgs=[]
 hits=[]
+
 for i in range(5):
-    negatives = []
-    for i in range(len(test_df)):
-        user = users[i]
-        
-        for _ in range(num_negatives):
-            while True:
-                item = np.random.randint(num_items)
-                if (user, item) not in interactions_matrix:
-                    negatives.append([user, item, 0,test_df.iloc[i].day,test_df.iloc[i].week])
-                    # interactions_matrix[user, item] = 0
-                    break
+    seed = i
+    np.random.seed(seed)
+    negatives_id = joblib.hash((seed,test_df,users,num_negatives,interactions_matrix,num_items))
+    fpath = f'data/utils/negatives/{negatives_id}'
+    if not utils.file_exists(fpath):
+        negatives= utils.generate_negative_samples(test_df,users,num_negatives,interactions_matrix,num_items)
+        utils.create_path_to_file(path)
+        pickle.dump(negatives,file=open(fpath,'wb'))
+    else:
+        negatives = pickle.load(open(fpath,'rb'))
+
     negatives_df = pd.DataFrame(negatives, columns=['user_id', 'item_id',
                                                     'target','day','week']).astype(np.int32)
     test_neg_df = pd.concat([test_df, negatives_df], axis=0).reset_index(drop=True)

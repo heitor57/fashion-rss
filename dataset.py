@@ -433,7 +433,7 @@ def preprocess(dataset_input_parameters, dataset_output_parameters):
 
         users_history_size = interactions_df.groupby(
             'user_id')['item_id'].count()
-        users_history_size = users_history_size.loc[users_history_size >= 10]
+        users_history_size = users_history_size.loc[users_history_size >= list(dataset_output_parameters.values())[0]['mshi']]
         interactions_df = interactions_df.loc[interactions_df.user_id.isin(
             users_history_size.index)]
 
@@ -500,7 +500,7 @@ def preprocess(dataset_input_parameters, dataset_output_parameters):
 
         users_history_size = interactions_df.groupby(
             'user_id')['item_id'].count()
-        users_history_size = users_history_size.loc[users_history_size >= 5]
+        users_history_size = users_history_size.loc[users_history_size >= list(dataset_output_parameters.values())[0]['mshi']]
         interactions_df = interactions_df.loc[interactions_df.user_id.isin(
             users_history_size.index)]
 

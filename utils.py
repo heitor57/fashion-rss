@@ -111,3 +111,16 @@ def eval_hits(results_df,test_df):
         count+=1
 
     return values_acc/count
+
+def generate_negative_samples(test_df,users,num_negatives,interactions_matrix,num_items):
+    negatives = []
+    for i in range(len(test_df)):
+        user = users[i]
+        
+        for _ in range(num_negatives):
+            while True:
+                item = np.random.randint(num_items)
+                if (user, item) not in interactions_matrix:
+                    negatives.append([user, item, 0,test_df.iloc[i].day,test_df.iloc[i].week])
+    # interactions_matrix[user, item] = 0
+                    break

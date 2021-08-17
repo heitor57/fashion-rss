@@ -31,7 +31,7 @@ import argparse
 dataset_input_parameters = {'amazon_fashion': {}}
 # dataset_input_parameters = {'amazon_cloth': {}}
 
-dataset_output_parameters = {'preprocess': {'base': dataset_input_parameters, 'mshi': 10}}
+dataset_output_parameters = {'preprocess': {'base': dataset_input_parameters, 'mshi': 5}}
 dataset_output_settings = dataset.dataset_settings_factory(dataset_output_parameters)
 interactions_df=dataset.preprocess(dataset_input_parameters=dataset_input_parameters,
                    dataset_output_parameters=dataset_output_parameters)

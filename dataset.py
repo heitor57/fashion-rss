@@ -198,7 +198,7 @@ def one_split_query(df, train_rate):
 
 
 def leave_one_out(df):
-    print(df)
+    # print(df)
     df_og = df
     df = df.copy()
     df['id'] = np.arange(len(df))

@@ -1,4 +1,5 @@
 import parameters
+from copy import copy
 from collections import defaultdict
 import scipy.sparse
 import pandas as pd
@@ -49,7 +50,7 @@ def train_method(recommender, method, data):
         recommender.value_function.neural_network.training = False
     pass
 
-def exec_experiment(dataset_input_parameters,methods,num_negatives):
+def exec_experiment(dataset_input_parameters,methods,num_negatives,dataset_name):
     interactions_df = dataset.parquet_load(
         dataset_input_settings['interactions_path'])
     num_users = interactions_df.user_id.max()+1
@@ -115,9 +116,16 @@ def exec_experiment(dataset_input_parameters,methods,num_negatives):
         else:
             raise NameError
         # method_search_parameters=[utils.dict_union(msp, {'num_users':num_users,'num_items':num_items,'scootensor':scootensor,'num_batchs':200,'batch_size': len(train_df)//2}) for msp in method_search_parameters]
-
+# ('lightgcn', {'num_lat': 8, 'lr': 0.001}, {'preprocess': {'base': {'amazon
+# _fashion': {}}, 'mshi': 5}}, 1)  
         for method_parameters in method_search_parameters:
+            # print((method, method_parameters,
+                                        # dataset_input_parameters, num_executions))
+            print((method,method_parameters,dataset_input_parameters,num_executions))
             execution_id = joblib.hash((method,method_parameters,dataset_input_parameters,num_executions))
+            # print(execution_id)
+            # raise SystemExit
+            method_parameters=  copy(method_parameters)
             method_parameters.update({'num_users':num_users,'num_items':num_items,'num_batchs':200,'batch_size': len(train_df)//2})
             if method == 'lightgcn':
                 method_parameters.update({'scootensor':scootensor})
@@ -183,6 +191,7 @@ def exec_experiment(dataset_input_parameters,methods,num_negatives):
             print(dataset_input_parameters,num_executions)
             print(method,method_parameters)
             # fparamlog.write()
+            # print(execution_id)
             path = f'data/metrics/mrr/{execution_id}_output.csv'
             utils.create_path_to_file(path)
             pd.DataFrame(mrrs).to_csv(path, index=None)
@@ -259,4 +268,4 @@ for dataset_name in ['amazon_fashion','amazon_cloth']:
 
         dataset_input_settings = dataset.dataset_settings_factory(
             dataset_input_parameters)
-        exec_experiment(dataset_input_parameters,args.m,99)
+        exec_experiment(dataset_input_parameters,args.m,99,dataset_name)

@@ -86,8 +86,13 @@ for dataset_name in ['amazon_fashion','amazon_cloth']:
             # method_search_parameters=[utils.dict_union(msp, {'num_users':num_users,'num_items':num_items,'scootensor':scootensor,'num_batchs':200,'batch_size': len(train_df)//2}) for msp in method_search_parameters]
 
             for method_parameters in method_search_parameters:
+                # print(method_parameters)
+                # print((method, method_parameters,
+                                            # dataset_input_parameters, num_executions))
                 execution_id = joblib.hash((method, method_parameters,
                                             dataset_input_parameters, num_executions))
+                # print(execution_id)
+                # raise SystemExit
 
                 path = f'data/metrics/mrr/{execution_id}_output.csv'
                 mrrs = pd.read_csv(path)['0']

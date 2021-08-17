@@ -36,7 +36,10 @@ from concurrent.futures import ProcessPoolExecutor
 import multiprocessing
 
 
-def leave_one_out_experiment(recommender,method,dataset_name,train_df,test_df,num_users,num_items,num_negatives,users,interactions_matrix,num_executions,execution_id,interactions_df):
+def leave_one_out_experiment(recommender, method, dataset_name, train_df,
+                             test_df, num_users, num_items, num_negatives,
+                             users, interactions_matrix, num_executions,
+                             execution_id, interactions_df):
     # recommender = create_method(method_parameters)
     train_method(
         recommender, method, {
@@ -63,10 +66,10 @@ def leave_one_out_experiment(recommender,method,dataset_name,train_df,test_df,nu
                                                         interactions_matrix,
                                                         num_items)
             utils.create_path_to_file(fpath)
-            with open(fpath,'wb') as f:
+            with open(fpath, 'wb') as f:
                 pickle.dump(negatives, file=f)
         else:
-            with open(fpath,'rb') as f:
+            with open(fpath, 'rb') as f:
                 negatives = pickle.load(f)
                 pass
         # print(negatives)
@@ -78,8 +81,9 @@ def leave_one_out_experiment(recommender,method,dataset_name,train_df,test_df,nu
 
         if not utils.file_exists(path):
 
-            results_df = run_rec(recommender, interactions_df, interactions_matrix,
-                                 train_df, test_neg_df, num_users, num_items,method)
+            results_df = run_rec(recommender, interactions_df,
+                                 interactions_matrix, train_df, test_neg_df,
+                                 num_users, num_items, method)
             utils.create_path_to_file(path)
             results_df.to_csv(path, index=False)
         else:
@@ -112,6 +116,7 @@ def leave_one_out_experiment(recommender,method,dataset_name,train_df,test_df,nu
     print('HITs:', hits)
     print('Mean HIT:', np.mean(hits))
 
+
 def train_method(recommender, method, data):
     """TODO: Docstring for train_method.
 
@@ -124,11 +129,13 @@ def train_method(recommender, method, data):
         recommender.value_function.neural_network.training = False
     pass
 
-def exec_experiment(dataset_input_parameters,methods,num_negatives,dataset_name):
+
+def exec_experiment(dataset_input_parameters, methods_search_parameters,
+                    methods_create_function, num_negatives, dataset_name):
     interactions_df = dataset.parquet_load(
         dataset_input_settings['interactions_path'])
-    num_users = interactions_df.user_id.max()+1
-    num_items = interactions_df.item_id.max()+1
+    num_users = interactions_df.user_id.max() + 1
+    num_items = interactions_df.item_id.max() + 1
 
     print('users', num_users, 'items', num_items)
 
@@ -168,45 +175,49 @@ def exec_experiment(dataset_input_parameters,methods,num_negatives,dataset_name)
             size=(num_users + num_items, num_users + num_items))
         scootensor = scootensor.coalesce()
 
-    for method in args.m:
+    for method, method_search_parameters in methods_search_parameters.items():
 
-        method_search_parameters= []
-        create_method = lambda x: None
-        if method == 'svd':
-            method_search_parameters = parameters.SVD_PARAMETERS
-            create_method = parameters.create_svd
-        elif method == 'svdpp':
-            method_search_parameters = parameters.SVDPP_PARAMETERS
-            create_method = parameters.create_svdpp
-        elif method == 'ncf':
-            method_search_parameters = parameters.NCF_PARAMETERS
-            create_method = parameters.create_ncf
-        elif method == 'bi':
-            method_search_parameters = parameters.BI_PARAMETERS
-            create_method = parameters.create_bi
-        elif method == 'lightgcn':
-            method_search_parameters = parameters.LIGHTGCN_PARAMETERS
-            create_method = parameters.create_lightgcn
-        else:
-            raise NameError
+        # method_search_parameters= []
+        # create_method = lambda x: None
         # method_search_parameters=[utils.dict_union(msp, {'num_users':num_users,'num_items':num_items,'scootensor':scootensor,'num_batchs':200,'batch_size': len(train_df)//2}) for msp in method_search_parameters]
-# ('lightgcn', {'num_lat': 8, 'lr': 0.001}, {'preprocess': {'base': {'amazon
-# _fashion': {}}, 'mshi': 5}}, 1)  
+        # ('lightgcn', {'num_lat': 8, 'lr': 0.001}, {'preprocess': {'base': {'amazon
+        # _fashion': {}}, 'mshi': 5}}, 1)
+        # methods_create_function[method](meth)
         for method_parameters in method_search_parameters:
             # print((method, method_parameters,
-                                        # dataset_input_parameters, num_executions))
-            print((method,method_parameters,dataset_input_parameters,num_executions))
-            execution_id = joblib.hash((method,method_parameters,dataset_input_parameters,num_executions))
+            # dataset_input_parameters, num_executions))
+            print((method, method_parameters, dataset_input_parameters,
+                   num_executions))
+            execution_id = joblib.hash(
+                (method, method_parameters, dataset_input_parameters,
+                 num_executions))
             # print(execution_id)
             # raise SystemExit
-            method_parameters=  copy(method_parameters)
-            method_parameters.update({'num_users':num_users,'num_items':num_items,'num_batchs':200,'batch_size': len(train_df)//2})
+            method_parameters = copy(method_parameters)
+            method_parameters.update({
+                'num_users': num_users,
+                'num_items': num_items,
+                'num_batchs': 200,
+                'batch_size': len(train_df) // 2
+            })
             if method == 'lightgcn':
-                method_parameters.update({'scootensor':scootensor})
+                method_parameters.update({'scootensor': scootensor})
             # method_parameters
-            recommender = create_method(method_parameters)
-            leave_one_out_experiment(recommender=recommender,dataset_name=dataset_name,execution_id=execution_id,interactions_df=interactions_df,
-                                    method=method,interactions_matrix=interactions_matrix,num_executions=num_executions,num_items=num_items,num_negatives=num_negatives,num_users=num_users,test_df=test_df,train_df=train_df,users=users)
+            recommender = methods_create_function[method](method_parameters)
+            leave_one_out_experiment(recommender=recommender,
+                                     dataset_name=dataset_name,
+                                     execution_id=execution_id,
+                                     interactions_df=interactions_df,
+                                     method=method,
+                                     interactions_matrix=interactions_matrix,
+                                     num_executions=num_executions,
+                                     num_items=num_items,
+                                     num_negatives=num_negatives,
+                                     num_users=num_users,
+                                     test_df=test_df,
+                                     train_df=train_df,
+                                     users=users)
+
 
 def run_rec(recommender, interactions_df, interactions_matrix, train_df,
             test_df, num_users, num_items, method):
@@ -250,11 +261,43 @@ def run_rec(recommender, interactions_df, interactions_matrix, train_df,
 
 
 argparser = argparse.ArgumentParser()
-argparser.add_argument('-m',nargs='*')
+argparser.add_argument('-m', nargs='*')
 args = argparser.parse_args()
+methods_search_parameters = {
+    'svd': parameters.SVD_PARAMETERS,
+    'svdpp': parameters.SVDPP_PARAMETERS,
+    'ncf': parameters.NCF_PARAMETERS,
+    'bi': parameters.BI_PARAMETERS,
+    'lightgcn': parameters.LIGHTGCN_PARAMETERS,
+}
+methods_create_function = {
+    'svd': parameters.SVD_PARAMETERS,
+    'svdpp': parameters.SVDPP_PARAMETERS,
+    'ncf': parameters.NCF_PARAMETERS,
+    'bi': parameters.BI_PARAMETERS,
+    'lightgcn': parameters.LIGHTGCN_PARAMETERS,
+}
 
-for dataset_name in ['amazon_fashion','amazon_cloth']:
-    for mshi in [5,10]:
+methods_search_parameters = {i: methods_search_parameters[i] for i in args.m}
+# if method == 'svd':
+# method_search_parameters = parameters.SVD_PARAMETERS
+# create_method = parameters.create_svd
+# elif method == 'svdpp':
+# method_search_parameters = parameters.SVDPP_PARAMETERS
+# create_method = parameters.create_svdpp
+# elif method == 'ncf':
+# method_search_parameters = parameters.NCF_PARAMETERS
+# create_method = parameters.create_ncf
+# elif method == 'bi':
+# method_search_parameters = parameters.BI_PARAMETERS
+# create_method = parameters.create_bi
+# elif method == 'lightgcn':
+# method_search_parameters = parameters.LIGHTGCN_PARAMETERS
+# create_method = parameters.create_lightgcn
+# else:
+# raise NameError
+for dataset_name in ['amazon_fashion', 'amazon_cloth']:
+    for mshi in [5, 10]:
         dataset_input_parameters = {dataset_name: {}}
 
         dataset_input_parameters = {
@@ -266,4 +309,8 @@ for dataset_name in ['amazon_fashion','amazon_cloth']:
 
         dataset_input_settings = dataset.dataset_settings_factory(
             dataset_input_parameters)
-        exec_experiment(dataset_input_parameters,args.m,99,dataset_name)
+        exec_experiment(dataset_input_parameters=dataset_input_parameters,
+                        methods_search_parameters=methods_search_parameters,
+                        methods_create_function=methods_create_function,
+                        num_negatives=99,
+                        dataset_name=dataset_name)

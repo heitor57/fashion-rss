@@ -198,6 +198,7 @@ def one_split_query(df, train_rate):
 
 
 def leave_one_out(df):
+    print(df)
     df_og = df
     df = df.copy()
     df['id'] = np.arange(len(df))
@@ -360,6 +361,11 @@ def dataset_settings_factory(parameters):
             'interactions_path':
                 'data/{}_preprocessed.parquet'.format(dataset_id),
         }
+    elif name == 'sample':
+        return {
+            'interactions_path':
+                'data/{}_sampled.parquet'.format(dataset_id),
+        }
     else:
         return {
             'train_path':
@@ -508,7 +514,13 @@ def preprocess(dataset_input_parameters, dataset_output_parameters):
             'category').cat.codes
         interactions_df.user_id = interactions_df.user_id.astype(
             'category').cat.codes
+    elif list(dataset_input_parameters.keys())[0] == 'preprocess':
+        # print(dataset_input_settings['interactions_path'])
+        interactions_df = pd.read_parquet(dataset_input_settings['interactions_path'])
+        # interactions_df = interactions_df.sample(len(interactions_df)*list(dataset_output_parameters.values())[0]['rate'])
+        interactions_df, _ = leave_one_out(interactions_df)
 
+    # print(list(dataset_input_parameters.keys())[0])
     # interactions_df.to_parquet(dataset_output_settings['interactions_path'])
     return interactions_df
 

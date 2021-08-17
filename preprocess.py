@@ -31,11 +31,17 @@ import argparse
 dataset_input_parameters = {'amazon_fashion': {}}
 # dataset_input_parameters = {'amazon_cloth': {}}
 
-dataset_output_parameters = {'preprocess': {'base': dataset_input_parameters, 'mshi': 5}}
+# dataset_output_parameters = {'preprocess': {'base': dataset_input_parameters, 'mshi': 5}}
+
+dataset_input_parameters = {'preprocess': {'base': dataset_input_parameters, 'mshi': 5}}
+
+dataset_output_parameters = {'sample': {'base': dataset_input_parameters}}
+
 dataset_output_settings = dataset.dataset_settings_factory(dataset_output_parameters)
 interactions_df=dataset.preprocess(dataset_input_parameters=dataset_input_parameters,
                    dataset_output_parameters=dataset_output_parameters)
 
+print(interactions_df)
 print('interactions',interactions_df.shape)
 print('users',interactions_df.user_id.nunique())
 print('items',interactions_df.item_id.nunique())

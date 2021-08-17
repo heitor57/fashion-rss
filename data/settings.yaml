@@ -1,0 +1,14 @@
+amazon_fashion:
+  5:
+    bi:
+      {num_lat: 3}
+  10:
+    bi:
+      {num_lat: 3}
+amazon_cloth:
+  5:
+    bi:
+      {num_lat: 3}
+  10:
+    bi:
+      {num_lat: 3}

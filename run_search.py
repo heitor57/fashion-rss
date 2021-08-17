@@ -164,7 +164,7 @@ def exec_experiment(dataset_input_parameters,methods,num_negatives):
                 if not utils.file_exists(path):
 
                     results_df = run_rec(recommender, interactions_df, interactions_matrix,
-                                         train_df, test_neg_df, num_users, num_items)
+                                         train_df, test_neg_df, num_users, num_items,method)
                     utils.create_path_to_file(path)
                     results_df.to_csv(path, index=False)
                 else:
@@ -202,7 +202,7 @@ def exec_experiment(dataset_input_parameters,methods,num_negatives):
             print('Mean HIT:', np.mean(hits))
 
 def run_rec(recommender, interactions_df, interactions_matrix, train_df,
-            test_df, num_users, num_items):
+            test_df, num_users, num_items, method):
     results = []
     # test_users_query_id = test_df.groupby(
     # 'user_id')['query_id'].unique().to_dict()

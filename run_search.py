@@ -1,4 +1,5 @@
-dataset_name = 'amazon_fashion'
+dataset_name = 'amazon_cloth'
+# dataset_name = 'amazon_fashion'
 import parameters
 from collections import defaultdict
 import scipy.sparse
@@ -56,7 +57,7 @@ def train_method(recommender, method, data):
         recommender.value_function.neural_network.training = False
     pass
 
-def get_best_base_parameter():
+def get_best_base_parameter(method,base):
     pass
 
 def run_rec(recommender, interactions_df, interactions_matrix, train_df,

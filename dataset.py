@@ -460,7 +460,7 @@ def preprocess(dataset_input_parameters, dataset_output_parameters):
                                           ]].groupby('reviewerID').count()
         counts_probabilities = filtered_counts.value_counts(
         ) / filtered_counts.value_counts().sum()
-        num_users = 2000
+        num_users = 10000
 
         num_interactions_users = filtered_counts.reset_index().groupby(
             'asin').agg(list)['reviewerID'].to_dict()

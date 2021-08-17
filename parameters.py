@@ -66,16 +66,25 @@ def create_ncf(parameters):
 NCF_PARAMETERS = [
     {'num_lat':8,'lr':0.1},
     {'num_lat':32,'lr':0.1},
-    {'num_lat':64,'lr':0.1},
+    {'num_lat':128,'lr':0.1},
     {'num_lat':8,'lr':0.01},
     {'num_lat':32,'lr':0.01},
-    {'num_lat':64,'lr':0.01},
+    {'num_lat':128,'lr':0.01},
+]
+
+LIGHTGCN_PARAMETERS = [
+    {'num_lat':8,'lr':0.001},
+    {'num_lat':32,'lr':0.001},
+    # {'num_lat':64,'lr':0.001},
+    {'num_lat':8,'lr':0.0001},
+    {'num_lat':32,'lr':0.0001},
+    # {'num_lat':64,'lr':0.0001},
 ]
 
 def create_lightgcn(parameters):
     keep_prob = 0.9
-    nn = neural_networks.LightGCN(latent_dim_rec=parameters['latent_dim_rec'],
-                                  lightGCN_n_layers=parameters['lightGCN_n_layers'],
+    nn = neural_networks.LightGCN(latent_dim_rec=parameters['num_lat'],
+                                  lightGCN_n_layers=2,
                                   keep_prob=keep_prob,
                                   A_split=False,
                                   pretrain=0,
@@ -92,7 +101,8 @@ def create_lightgcn(parameters):
                                 loss_function,
                                 num_batchs=parameters['num_batchs'],
                                 batch_size=parameters['batch_size'])
-    recommender = recommenders.NNRecommender(nnvf, name=method)
+    recommender = recommenders.NNRecommender(nnvf, name='lightgcn')
+    return recommender
 
 def create_stacking(parameters):
     meta_learner_parameters = [

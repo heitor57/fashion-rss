@@ -34,6 +34,9 @@ import argparse
 import pickle
 from concurrent.futures import ProcessPoolExecutor
 import multiprocessing
+from itertools import chain
+def dict_union(*args):
+    return dict(chain.from_iterable(d.items() for d in args))
 
 
 def chunks(l, n):
@@ -53,6 +56,8 @@ def train_method(recommender, method, data):
         recommender.value_function.neural_network.training = False
     pass
 
+def get_best_base_parameter():
+    pass
 
 def run_rec(recommender, interactions_df, interactions_matrix, train_df,
             test_df, num_users, num_items):
@@ -111,7 +116,7 @@ dataset_input_settings = dataset.dataset_settings_factory(
     dataset_input_parameters)
 
 argparser = argparse.ArgumentParser()
-argparser.add_argument('-m', type=list)
+argparser.add_argument('-m',nargs='*')
 args = argparser.parse_args()
 
 interactions_df = dataset.parquet_load(
@@ -132,29 +137,55 @@ train_df, test_df = dataset.leave_one_out(interactions_df)
 
 users = test_df.user_id.to_numpy()
 
-num_executions = 5
+num_executions = 1
+
+# fparamlog = open('./data/utils/paramsearch.txt','a')
+if 'lightgcn' in args.m:
+    tmp_train_df = train_df.copy()
+    tmp_train_df = tmp_train_df.loc[tmp_train_df.target > 0]
+    tmp_train_df = tmp_train_df.groupby(['user_id', 'item_id'
+                                        ])['target'].sum() >= 1
+    tmp_train_df = tmp_train_df.reset_index()
+    tmp_train_df.item_id = tmp_train_df.item_id + num_users
+    tmp_train_df_2 = tmp_train_df.copy()
+    scootensor = torch.sparse_coo_tensor(
+        np.array([
+            np.hstack(
+                [tmp_train_df.user_id.values, tmp_train_df.item_id.values]),
+            np.hstack(
+                [tmp_train_df.item_id.values, tmp_train_df.user_id.values]),
+        ]),
+        np.hstack([
+            tmp_train_df.target.values.astype('int'),
+            tmp_train_df.target.values.astype('int')
+        ]),
+        dtype=torch.float,
+        size=(num_users + num_items, num_users + num_items))
+    scootensor = scootensor.coalesce()
 
 for method in args.m:
 
     method_search_parameters= []
     create_method = lambda x: None
-    if args.m == 'svd':
+    if method == 'svd':
         method_search_parameters = parameters.SVD_PARAMETERS
         create_method = parameters.create_svd
-    elif args.m == 'svdpp':
+    elif method == 'svdpp':
         method_search_parameters = parameters.SVDPP_PARAMETERS
         create_method = parameters.create_svdpp
-    elif args.m == 'ncf':
+    elif method == 'ncf':
         method_search_parameters = parameters.NCF_PARAMETERS
+        # {k: v for k,v in method_search_parameters.items()}
         create_method = parameters.create_ncf
-    elif args.m == 'bi':
+    elif method == 'bi':
         method_search_parameters = parameters.BI_PARAMETERS
         create_method = parameters.create_bi
-    # elif args.m == 'stacking':
-        # method_search_parameters = parameters.BI_PARAMETERS
-        # create_method = parameters.create_bi
+    elif method == 'lightgcn':
+        method_search_parameters = parameters.LIGHTGCN_PARAMETERS
+        create_method = parameters.create_lightgcn
     else:
         raise NameError
+    method_search_parameters=[dict_union(msp, {'num_users':num_users,'num_items':num_items,'scootensor':scootensor,'num_batchs':200,'batch_size': len(train_df)//2}) for msp in method_search_parameters]
 
     for method_parameters in method_search_parameters:
         # method_parameters
@@ -191,18 +222,21 @@ for method in args.m:
                     negatives = pickle.load(f)
                     pass
             # print(negatives)
-
+            path = f'data/results/{execution_id}_{i}_output.csv'
             negatives_df = pd.DataFrame(
                 negatives, columns=['user_id', 'item_id', 'target', 'day',
                                     'week']).astype(np.int32)
             test_neg_df = pd.concat([test_df, negatives_df],
                                     axis=0).reset_index(drop=True)
 
-            results_df = run_rec(recommender, interactions_df, interactions_matrix,
-                                 train_df, test_neg_df, num_users, num_items)
-            path = f'data/results/{execution_id}_{i}_output.csv'
-            utils.create_path_to_file(path)
-            results_df.to_csv(path, index=False)
+            if not utils.file_exists(path):
+
+                results_df = run_rec(recommender, interactions_df, interactions_matrix,
+                                     train_df, test_neg_df, num_users, num_items)
+                utils.create_path_to_file(path)
+                results_df.to_csv(path, index=False)
+            else:
+                results_df = pd.read_csv(path)
 
             results_df = results_df.loc[results_df['rank'] <= 10]
             mrr = utils.eval_mrr(results_df, test_neg_df)
@@ -211,9 +245,12 @@ for method in args.m:
             ndcgs.append(ndcg)
             hit = utils.eval_hits(results_df, test_df)
             hits.append(hit)
-            print(results_df.describe())
+            # print(results_df.describe())
             print('ndcg', ndcg, 'mrr', mrr, 'hits', hit)
 
+        print(dataset_input_parameters,num_executions)
+        print(method,method_parameters)
+        # fparamlog.write()
         path = f'data/metrics/mrr/{execution_id}_output.csv'
         utils.create_path_to_file(path)
         pd.DataFrame(mrrs).to_csv(path, index=None)

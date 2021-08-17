@@ -512,9 +512,6 @@ for i in range(5):
     hits.append(hit)
     print('ndcg',ndcg,'mrr',mrr,'hits',hit)
 
-    
-        
-
 path = f'data/metrics/mrr/{method}_{dataset.get_dataset_id(dataset_input_parameters)}_output.csv'
 utils.create_path_to_file(path)
 pd.DataFrame(mrrs).to_csv(path,index=None)

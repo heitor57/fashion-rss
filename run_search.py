@@ -131,7 +131,8 @@ def train_method(recommender, method, data):
 
 
 def exec_experiment(dataset_input_parameters, methods_search_parameters,
-                    methods_create_function, num_negatives, dataset_name):
+                    methods_create_function, num_negatives, dataset_name,
+                    num_executions):
     interactions_df = dataset.parquet_load(
         dataset_input_settings['interactions_path'])
     num_users = interactions_df.user_id.max() + 1
@@ -149,8 +150,6 @@ def exec_experiment(dataset_input_parameters, methods_search_parameters,
     # print(train_df)
 
     users = test_df.user_id.to_numpy()
-
-    num_executions = 1
 
     if 'lightgcn' in args.m:
         tmp_train_df = train_df.copy()
@@ -177,22 +176,12 @@ def exec_experiment(dataset_input_parameters, methods_search_parameters,
 
     for method, method_search_parameters in methods_search_parameters.items():
 
-        # method_search_parameters= []
-        # create_method = lambda x: None
-        # method_search_parameters=[utils.dict_union(msp, {'num_users':num_users,'num_items':num_items,'scootensor':scootensor,'num_batchs':200,'batch_size': len(train_df)//2}) for msp in method_search_parameters]
-        # ('lightgcn', {'num_lat': 8, 'lr': 0.001}, {'preprocess': {'base': {'amazon
-        # _fashion': {}}, 'mshi': 5}}, 1)
-        # methods_create_function[method](meth)
         for method_parameters in method_search_parameters:
-            # print((method, method_parameters,
-            # dataset_input_parameters, num_executions))
             print((method, method_parameters, dataset_input_parameters,
                    num_executions))
             execution_id = joblib.hash(
                 (method, method_parameters, dataset_input_parameters,
                  num_executions))
-            # print(execution_id)
-            # raise SystemExit
             method_parameters = copy(method_parameters)
             method_parameters.update({
                 'num_users': num_users,
@@ -222,10 +211,6 @@ def exec_experiment(dataset_input_parameters, methods_search_parameters,
 def run_rec(recommender, interactions_df, interactions_matrix, train_df,
             test_df, num_users, num_items, method):
     results = []
-    # test_users_query_id = test_df.groupby(
-    # 'user_id')['query_id'].unique().to_dict()
-    # test_users_query_id = {k: v[0] for k, v in test_users_query_id.items()}
-
     groups = [group for name, group in tqdm(test_df.groupby('user_id'))]
     num_groups = len(groups)
     chunksize = num_groups // 50
@@ -244,11 +229,7 @@ def run_rec(recommender, interactions_df, interactions_matrix, train_df,
             users, items = recommender.recommend(
                 chunk_users_items_df['user_id'].to_numpy(),
                 chunk_users_items_df['item_id'].to_numpy())
-        # user_id = chunk_users_items_df['user_id'].iloc[0]
         chunk_users_items_df = chunk_users_items_df.set_index('user_id')
-        # query_id = chunk_users_items_df['query_id'].iloc[0]
-        # j = 1
-        # print(users,items)
         for user_tmp, item_tmp in zip(users, items):
             results.append([
                 user_tmp, item_tmp,
@@ -262,7 +243,7 @@ def run_rec(recommender, interactions_df, interactions_matrix, train_df,
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument('-m', nargs='*')
-argparser.add_argument('--best', type=bool)
+argparser.add_argument('--best', action='store_true')
 args = argparser.parse_args()
 if args.best:
     best_parameters = utils.load_best_parameters()
@@ -274,7 +255,9 @@ else:
         'bi': parameters.BI_PARAMETERS,
         'lightgcn': parameters.LIGHTGCN_PARAMETERS,
     }
-    methods_search_parameters = {i: methods_search_parameters[i] for i in args.m}
+    methods_search_parameters = {
+        i: methods_search_parameters[i] for i in args.m
+    }
 
 methods_create_function = {
     'svd': parameters.create_svd,
@@ -283,25 +266,15 @@ methods_create_function = {
     'bi': parameters.create_bi,
     'lightgcn': parameters.create_lightgcn,
     'stacking': parameters.create_stacking,
+    'popular': parameters.create_popular,
+    'random': parameters.create_random,
 }
 
-# if method == 'svd':
-# method_search_parameters = parameters.SVD_PARAMETERS
-# create_method = parameters.create_svd
-# elif method == 'svdpp':
-# method_search_parameters = parameters.SVDPP_PARAMETERS
-# create_method = parameters.create_svdpp
-# elif method == 'ncf':
-# method_search_parameters = parameters.NCF_PARAMETERS
-# create_method = parameters.create_ncf
-# elif method == 'bi':
-# method_search_parameters = parameters.BI_PARAMETERS
-# create_method = parameters.create_bi
-# elif method == 'lightgcn':
-# method_search_parameters = parameters.LIGHTGCN_PARAMETERS
-# create_method = parameters.create_lightgcn
-# else:
-# raise NameError
+if args.best:
+    num_executions = 5
+else:
+    num_executions = 1
+
 for dataset_name in ['amazon_fashion', 'amazon_cloth']:
     for mshi in [5, 10]:
         dataset_input_parameters = {dataset_name: {}}
@@ -312,13 +285,22 @@ for dataset_name in ['amazon_fashion', 'amazon_cloth']:
                 'mshi': mshi
             }
         }
+        if not args.best:
+            dataset_input_parameters = {
+                'sample': {
+                    'base': dataset_input_parameters,
+                }
+            }
 
         dataset_input_settings = dataset.dataset_settings_factory(
             dataset_input_parameters)
         if args.best:
-            methods_search_parameters = {i: [best_parameters[dataset_name][mshi][i]] for i in args.m}
+            methods_search_parameters = {
+                i: [best_parameters[dataset_name][mshi][i]] for i in args.m
+            }
         exec_experiment(dataset_input_parameters=dataset_input_parameters,
                         methods_search_parameters=methods_search_parameters,
                         methods_create_function=methods_create_function,
                         num_negatives=99,
-                        dataset_name=dataset_name)
+                        dataset_name=dataset_name,
+                        num_executions=num_executions)

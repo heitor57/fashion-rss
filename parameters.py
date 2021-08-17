@@ -6,6 +6,17 @@ import recommenders
 import dataset
 import neural_networks
 import value_functions
+
+def create_popular(parameters):
+    vf = value_functions.PopularVF()
+    recommender = recommenders.SimpleRecommender(vf, name='popular')
+    return recommender
+
+def create_random(parameters):
+    vf = value_functions.RandomVF()
+    recommender = recommenders.SimpleRecommender(vf, name='random')
+    return recommender
+
 def create_bi(parameters):
     loss_function = loss_functions.BPRLoss(1e-3, 0.001)
     nn = neural_networks.BilinearNet(parameters['num_users'], parameters['num_items'], 32, sparse=False)

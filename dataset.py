@@ -514,11 +514,13 @@ def preprocess(dataset_input_parameters, dataset_output_parameters):
             'category').cat.codes
         interactions_df.user_id = interactions_df.user_id.astype(
             'category').cat.codes
-    elif list(dataset_input_parameters.keys())[0] == 'preprocess':
+    elif list(dataset_output_parameters.keys())[0] == 'sample':
         # print(dataset_input_settings['interactions_path'])
         interactions_df = pd.read_parquet(dataset_input_settings['interactions_path'])
         # interactions_df = interactions_df.sample(len(interactions_df)*list(dataset_output_parameters.values())[0]['rate'])
+        # print(interactions_df)
         interactions_df, _ = leave_one_out(interactions_df)
+        # print(interactions_df)
 
     # print(list(dataset_input_parameters.keys())[0])
     # interactions_df.to_parquet(dataset_output_settings['interactions_path'])

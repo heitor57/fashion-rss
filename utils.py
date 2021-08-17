@@ -148,6 +148,6 @@ def load_settings():
     return d
 
 def save_settings(d):
-    open('./data/settings.yaml').write(yaml.dump(d))
+    open('./data/settings.yaml','w').write(yaml.dump(d))
     return d
 

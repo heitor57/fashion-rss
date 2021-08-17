@@ -1,4 +1,5 @@
 from collections import defaultdict
+import yaml
 import parameters
 import scipy.stats
 import operator
@@ -40,6 +41,7 @@ import multiprocessing
 argparser = argparse.ArgumentParser()
 argparser.add_argument('-m', nargs='*')
 args = argparser.parse_args()
+best_parameters = utils.load_settings()
 
 for dataset_name in ['amazon_fashion','amazon_cloth']:
     for mshi in [5,10]:
@@ -118,5 +120,9 @@ for dataset_name in ['amazon_fashion','amazon_cloth']:
             d= {k: np.mean(v[metric]) for k, v in methods_metrics_values[method].items()}
             d={k: v for k, v in sorted(d.items(), key=lambda item: item[1],reverse=True)}
             print(list(d.keys())[0],list(d.values())[0])
-            for k, v in d.items():
-                print(k,v)
+            best_parameters[dataset_name][mshi][method] = eval(list(d.keys())[0])
+            # for k, v in d.items():
+                # print(k,v)
+
+utils.save_settings(best_parameters)
+# print(yaml.dump(best_parameters))

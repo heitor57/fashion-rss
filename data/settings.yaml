@@ -1,14 +1,22 @@
-amazon_fashion:
-  5:
-    bi:
-      {num_lat: 3}
-  10:
-    bi:
-      {num_lat: 3}
 amazon_cloth:
   5:
     bi:
-      {num_lat: 3}
+      num_lat: 3
+    svd:
+      num_lat: 64
   10:
     bi:
-      {num_lat: 3}
+      num_lat: 3
+    svd:
+      num_lat: 64
+amazon_fashion:
+  5:
+    bi:
+      num_lat: 3
+    svd:
+      num_lat: 8
+  10:
+    bi:
+      num_lat: 3
+    svd:
+      num_lat: 8

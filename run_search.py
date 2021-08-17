@@ -36,7 +36,81 @@ from concurrent.futures import ProcessPoolExecutor
 import multiprocessing
 
 
+def leave_one_out_experiment(recommender,method,dataset_name,train_df,test_df,num_users,num_items,num_negatives,users,interactions_matrix,num_executions,execution_id,interactions_df):
+    # recommender = create_method(method_parameters)
+    train_method(
+        recommender, method, {
+            'name': dataset_name,
+            'train': train_df,
+            'num_users': num_users,
+            'num_items': num_items
+        })
 
+    mrrs = []
+    ndcgs = []
+    hits = []
+
+    for i in range(num_executions):
+        seed = i
+        np.random.seed(seed)
+        negatives_id = joblib.hash((seed, test_df, users, num_negatives,
+                                    interactions_matrix, num_items))
+        fpath = f'data/utils/negatives/{negatives_id}'
+        path = f'data/results/{execution_id}_{i}_output.csv'
+        if not utils.file_exists(fpath):
+            negatives = utils.generate_negative_samples(test_df, users,
+                                                        num_negatives,
+                                                        interactions_matrix,
+                                                        num_items)
+            utils.create_path_to_file(fpath)
+            with open(fpath,'wb') as f:
+                pickle.dump(negatives, file=f)
+        else:
+            with open(fpath,'rb') as f:
+                negatives = pickle.load(f)
+                pass
+        # print(negatives)
+        negatives_df = pd.DataFrame(
+            negatives, columns=['user_id', 'item_id', 'target', 'day',
+                                'week']).astype(np.int32)
+        test_neg_df = pd.concat([test_df, negatives_df],
+                                axis=0).reset_index(drop=True)
+
+        if not utils.file_exists(path):
+
+            results_df = run_rec(recommender, interactions_df, interactions_matrix,
+                                 train_df, test_neg_df, num_users, num_items,method)
+            utils.create_path_to_file(path)
+            results_df.to_csv(path, index=False)
+        else:
+            results_df = pd.read_csv(path)
+
+        results_df = results_df.loc[results_df['rank'] <= 10]
+        mrr = utils.eval_mrr(results_df, test_neg_df)
+        mrrs.append(mrr)
+        ndcg = utils.eval_ndcg(results_df, test_df)
+        ndcgs.append(ndcg)
+        hit = utils.eval_hits(results_df, test_df)
+        hits.append(hit)
+        print('ndcg', ndcg, 'mrr', mrr, 'hits', hit)
+
+    path = f'data/metrics/mrr/{execution_id}_output.csv'
+    utils.create_path_to_file(path)
+    pd.DataFrame(mrrs).to_csv(path, index=None)
+    print('MRRs:', mrrs)
+    print('Mean MRR:', np.mean(mrrs))
+
+    path = f'data/metrics/ndcg/{execution_id}_output.csv'
+    utils.create_path_to_file(path)
+    pd.DataFrame(ndcgs).to_csv(path, index=None)
+    print('NDCGs:', ndcgs)
+    print('Mean NDCG:', np.mean(ndcgs))
+
+    path = f'data/metrics/hit/{execution_id}_output.csv'
+    utils.create_path_to_file(path)
+    pd.DataFrame(hits).to_csv(path, index=None)
+    print('HITs:', hits)
+    print('Mean HIT:', np.mean(hits))
 
 def train_method(recommender, method, data):
     """TODO: Docstring for train_method.
@@ -131,84 +205,8 @@ def exec_experiment(dataset_input_parameters,methods,num_negatives,dataset_name)
                 method_parameters.update({'scootensor':scootensor})
             # method_parameters
             recommender = create_method(method_parameters)
-            train_method(
-                recommender, method, {
-                    'name': dataset_name,
-                    'train': train_df,
-                    'num_users': num_users,
-                    'num_items': num_items
-                })
-
-            mrrs = []
-            ndcgs = []
-            hits = []
-
-            for i in range(num_executions):
-                seed = i
-                np.random.seed(seed)
-                negatives_id = joblib.hash((seed, test_df, users, num_negatives,
-                                            interactions_matrix, num_items))
-                fpath = f'data/utils/negatives/{negatives_id}'
-                path = f'data/results/{execution_id}_{i}_output.csv'
-                if not utils.file_exists(fpath):
-                    negatives = utils.generate_negative_samples(test_df, users,
-                                                                num_negatives,
-                                                                interactions_matrix,
-                                                                num_items)
-                    utils.create_path_to_file(fpath)
-                    with open(fpath,'wb') as f:
-                        pickle.dump(negatives, file=f)
-                else:
-                    with open(fpath,'rb') as f:
-                        negatives = pickle.load(f)
-                        pass
-                # print(negatives)
-                negatives_df = pd.DataFrame(
-                    negatives, columns=['user_id', 'item_id', 'target', 'day',
-                                        'week']).astype(np.int32)
-                test_neg_df = pd.concat([test_df, negatives_df],
-                                        axis=0).reset_index(drop=True)
-
-                if not utils.file_exists(path):
-
-                    results_df = run_rec(recommender, interactions_df, interactions_matrix,
-                                         train_df, test_neg_df, num_users, num_items,method)
-                    utils.create_path_to_file(path)
-                    results_df.to_csv(path, index=False)
-                else:
-                    results_df = pd.read_csv(path)
-
-                results_df = results_df.loc[results_df['rank'] <= 10]
-                mrr = utils.eval_mrr(results_df, test_neg_df)
-                mrrs.append(mrr)
-                ndcg = utils.eval_ndcg(results_df, test_df)
-                ndcgs.append(ndcg)
-                hit = utils.eval_hits(results_df, test_df)
-                hits.append(hit)
-                # print(results_df.describe())
-                print('ndcg', ndcg, 'mrr', mrr, 'hits', hit)
-
-            print(dataset_input_parameters,num_executions)
-            print(method,method_parameters)
-            # fparamlog.write()
-            # print(execution_id)
-            path = f'data/metrics/mrr/{execution_id}_output.csv'
-            utils.create_path_to_file(path)
-            pd.DataFrame(mrrs).to_csv(path, index=None)
-            print('MRRs:', mrrs)
-            print('Mean MRR:', np.mean(mrrs))
-
-            path = f'data/metrics/ndcg/{execution_id}_output.csv'
-            utils.create_path_to_file(path)
-            pd.DataFrame(ndcgs).to_csv(path, index=None)
-            print('NDCGs:', ndcgs)
-            print('Mean NDCG:', np.mean(ndcgs))
-
-            path = f'data/metrics/hit/{execution_id}_output.csv'
-            utils.create_path_to_file(path)
-            pd.DataFrame(hits).to_csv(path, index=None)
-            print('HITs:', hits)
-            print('Mean HIT:', np.mean(hits))
+            leave_one_out_experiment(recommender=recommender,dataset_name=dataset_name,execution_id=execution_id,interactions_df=interactions_df,
+                                    method=method,interactions_matrix=interactions_matrix,num_executions=num_executions,num_items=num_items,num_negatives=num_negatives,num_users=num_users,test_df=test_df,train_df=train_df,users=users)
 
 def run_rec(recommender, interactions_df, interactions_matrix, train_df,
             test_df, num_users, num_items, method):

@@ -10,8 +10,8 @@ def create_bi(parameters):
     nn = neural_networks.BilinearNet(parameters['num_users'], parameters['num_items'], 32, sparse=False)
     nnvf = value_functions.NNVF(nn,
                                 loss_function,
-                                num_batchs=500,
-                                batch_size=int(parameters['train_df_size']*0.9))
+                                num_batchs=800,
+                                batch_size=parameters['batch_size'])
     recommender = recommenders.NNRecommender(nnvf, name='bi')
     return recommender
 

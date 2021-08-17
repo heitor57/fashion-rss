@@ -433,3 +433,4 @@ TSWLatexianTemp*
 data_phase1/TermsAndConditions.txt
 data_phase1/TermsAndConditions.txt
 *.gz
+data/utils/*

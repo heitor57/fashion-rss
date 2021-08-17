@@ -4,19 +4,35 @@ amazon_cloth:
       num_lat: 3
     svd:
       num_lat: 64
+    svdpp:
+      num_lat: 64
+    popular:
+      {}
   10:
     bi:
       num_lat: 3
     svd:
       num_lat: 64
+    svdpp:
+      num_lat: 32
+    popular:
+      {}
 amazon_fashion:
   5:
     bi:
       num_lat: 3
     svd:
       num_lat: 8
+    svdpp:
+      num_lat: 8
+    popular:
+      {}
   10:
     bi:
       num_lat: 3
     svd:
       num_lat: 8
+    svdpp:
+      num_lat: 8
+    popular:
+      {}

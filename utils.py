@@ -138,7 +138,7 @@ def chunks(l, n):
 
 
 
-def load_settings():
+def load_best_parameters():
     loader = yaml.SafeLoader
     path = "./data/settings.yaml"
     if file_exists(path):
@@ -147,7 +147,7 @@ def load_settings():
         d = {}
     return d
 
-def save_settings(d):
+def save_best_parameters(d):
     open('./data/settings.yaml','w').write(yaml.dump(d))
     return d
 

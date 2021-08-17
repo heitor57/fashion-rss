@@ -41,7 +41,7 @@ import multiprocessing
 argparser = argparse.ArgumentParser()
 argparser.add_argument('-m', nargs='*')
 args = argparser.parse_args()
-best_parameters = utils.load_settings()
+best_parameters = utils.load_best_parameters()
 
 for dataset_name in ['amazon_fashion','amazon_cloth']:
     for mshi in [5,10]:
@@ -124,5 +124,5 @@ for dataset_name in ['amazon_fashion','amazon_cloth']:
             # for k, v in d.items():
                 # print(k,v)
 
-utils.save_settings(best_parameters)
+utils.save_best_parameters(best_parameters)
 # print(yaml.dump(best_parameters))

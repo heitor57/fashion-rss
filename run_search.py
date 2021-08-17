@@ -262,23 +262,29 @@ def run_rec(recommender, interactions_df, interactions_matrix, train_df,
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument('-m', nargs='*')
+argparser.add_argument('--best', type=bool)
 args = argparser.parse_args()
-methods_search_parameters = {
-    'svd': parameters.SVD_PARAMETERS,
-    'svdpp': parameters.SVDPP_PARAMETERS,
-    'ncf': parameters.NCF_PARAMETERS,
-    'bi': parameters.BI_PARAMETERS,
-    'lightgcn': parameters.LIGHTGCN_PARAMETERS,
-}
+if args.best:
+    best_parameters = utils.load_best_parameters()
+else:
+    methods_search_parameters = {
+        'svd': parameters.SVD_PARAMETERS,
+        'svdpp': parameters.SVDPP_PARAMETERS,
+        'ncf': parameters.NCF_PARAMETERS,
+        'bi': parameters.BI_PARAMETERS,
+        'lightgcn': parameters.LIGHTGCN_PARAMETERS,
+    }
+    methods_search_parameters = {i: methods_search_parameters[i] for i in args.m}
+
 methods_create_function = {
-    'svd': parameters.SVD_PARAMETERS,
-    'svdpp': parameters.SVDPP_PARAMETERS,
-    'ncf': parameters.NCF_PARAMETERS,
-    'bi': parameters.BI_PARAMETERS,
-    'lightgcn': parameters.LIGHTGCN_PARAMETERS,
+    'svd': parameters.create_svd,
+    'svdpp': parameters.create_svdpp,
+    'ncf': parameters.create_ncf,
+    'bi': parameters.create_bi,
+    'lightgcn': parameters.create_lightgcn,
+    'stacking': parameters.create_stacking,
 }
 
-methods_search_parameters = {i: methods_search_parameters[i] for i in args.m}
 # if method == 'svd':
 # method_search_parameters = parameters.SVD_PARAMETERS
 # create_method = parameters.create_svd
@@ -309,6 +315,8 @@ for dataset_name in ['amazon_fashion', 'amazon_cloth']:
 
         dataset_input_settings = dataset.dataset_settings_factory(
             dataset_input_parameters)
+        if args.best:
+            methods_search_parameters = {i: [best_parameters[dataset_name][mshi][i]] for i in args.m}
         exec_experiment(dataset_input_parameters=dataset_input_parameters,
                         methods_search_parameters=methods_search_parameters,
                         methods_create_function=methods_create_function,

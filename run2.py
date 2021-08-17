@@ -434,7 +434,7 @@ num_negatives = 99
 # dataset_input_parameters = {'amazon_fashion': {}}
 dataset_input_parameters = {dataset_name: {}}
 
-dataset_input_parameters = {'preprocess': {'base': dataset_input_parameters,'mshi': 5}}
+dataset_input_parameters = {'preprocess': {'base': dataset_input_parameters,'mshi': 10}}
 
 dataset_input_settings = dataset.dataset_settings_factory(
     dataset_input_parameters)

@@ -28,8 +28,8 @@ import utils
 import argparse
 
 # dataset_input_parameters = {'farfetchfinal':{}}
-# dataset_input_parameters = {'amazon_fashion': {}}
-dataset_input_parameters = {'amazon_cloth': {}}
+dataset_input_parameters = {'amazon_fashion': {}}
+# dataset_input_parameters = {'amazon_cloth': {}}
 
 dataset_output_parameters = {'preprocess': {'base': dataset_input_parameters, 'mshi': 10}}
 

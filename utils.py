@@ -1,4 +1,7 @@
+from yaml.loader import Loader
 import torch
+import yaml
+from itertools import chain
 import numpy as np
 import pyximport; pyximport.install()
 import metrics
@@ -125,3 +128,26 @@ def generate_negative_samples(test_df,users,num_negatives,interactions_matrix,nu
     # interactions_matrix[user, item] = 0
                     break
     return negatives
+
+def dict_union(*args):
+    return dict(chain.from_iterable(d.items() for d in args))
+
+def chunks(l, n):
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
+
+
+
+def load_settings():
+    loader = yaml.SafeLoader
+    path = "./data/settings.yaml"
+    if file_exists(path):
+        d = yaml.load(open(path),Loader=loader)
+    else:
+        d = {}
+    return d
+
+def save_settings(d):
+    open('./data/settings.yaml').write(yaml.dump(d))
+    return d
+

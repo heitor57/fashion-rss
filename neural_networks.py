@@ -414,7 +414,9 @@ class LightGCN(nn.Module):
             print('use pretarined data')
         self.f = nn.Sigmoid()
         # self.Graph = self.dataset.getSparseGraph()
-        print(f"lgn is already to go(dropout:{self.dropout})")
+        # print(f"lgn is already to go(dropout:{self.dropout})")
+        # irint('Num users: {} Num items: {} Num user-item pair unique observations: {}'.
+              # format(num_users, num_items, total_observations))
 
         # print("save_txt")
     def __dropout_x(self, x, keep_prob):

@@ -1,38 +1,86 @@
 amazon_cloth:
   5:
     bi:
-      num_lat: 3
-    svd:
-      num_lat: 64
-    svdpp:
-      num_lat: 64
-    popular:
-      {}
-  10:
-    bi:
-      num_lat: 3
-    svd:
-      num_lat: 64
-    svdpp:
+      embedding_dim: 32
+      lr: 0.001
+      num_batchs: 500
+      weightdecay: 0.001
+    lightgcn:
+      lr: 0.001
+      num_lat: 8
+    ncf:
+      lr: 0.01
       num_lat: 32
-    popular:
+    popular: {}
+    svd:
+      num_lat: 8
+    svdpp:
+      num_lat: 8
+    random:
+      {}
+    stacking:
+      models: ['popular','lightgcn']
+  10:
+    stacking:
+      models: ['popular','lightgcn']
+    bi:
+      embedding_dim: 64
+      lr: 0.01
+      num_batchs: 500
+      weightdecay: 0.001
+    lightgcn:
+      lr: 0.001
+      num_lat: 8
+    ncf:
+      lr: 0.1
+      num_lat: 128
+    popular: {}
+    svd:
+      num_lat: 8
+    svdpp:
+      num_lat: 8
+    random:
       {}
 amazon_fashion:
   5:
+    stacking:
+      models: ['popular','lightgcn']
+    random:
+      {}
     bi:
-      num_lat: 3
+      embedding_dim: 32
+      lr: 0.001
+      num_batchs: 500
+      weightdecay: 0.001
+    lightgcn:
+      lr: 0.001
+      num_lat: 8
+    ncf:
+      lr: 0.01
+      num_lat: 32
+    popular: {}
     svd:
       num_lat: 8
     svdpp:
       num_lat: 8
-    popular:
-      {}
   10:
+    stacking:
+      models: ['popular','lightgcn']
+    random:
+      {}
     bi:
-      num_lat: 3
+      embedding_dim: 64
+      lr: 0.01
+      num_batchs: 500
+      weightdecay: 0.001
+    lightgcn:
+      lr: 0.001
+      num_lat: 8
+    ncf:
+      lr: 0.1
+      num_lat: 128
+    popular: {}
     svd:
       num_lat: 8
     svdpp:
       num_lat: 8
-    popular:
-      {}

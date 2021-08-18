@@ -48,19 +48,19 @@ def statistic_test(x, y, p):
             return 'loss'
     else:
         return 'tie'
+
+
 METHODS_PRETTY_NAME = {
-        'bi': 'BilinearNet',
-        'ncf': 'NeuMF',
-        'svd': 'SVD',
-        'svdpp': 'SVD++',
-        'popular': 'Popular',
-        'random': 'Random',
-        'lightgcn': 'LightGCN',
-        'coverage': 'Coverage',
-        'stacking': 'MLP(LightGCN+Popular)',
-
-        }
-
+    'bi': 'BilinearNet',
+    'ncf': 'NeuMF',
+    'svd': 'SVD',
+    'svdpp': 'SVD++',
+    'popular': 'Popular',
+    'random': 'Random',
+    'lightgcn': 'LightGCN',
+    'coverage': 'Coverage',
+    'stacking': 'MLP(LightGCN+Popular)',
+}
 
 stat_result_symbols = {'gain': "↑", 'loss': "↓", 'tie': "⏺"}
 
@@ -70,23 +70,39 @@ argparser.add_argument('-r', default='stacking')
 args = argparser.parse_args()
 
 # dataset_input_parameters = {'amazon_fashion': {}}
-dataset_input_parameters = {'amazon_cloth': {}}
+# dataset_input_parameters = {'amazon_cloth': {}}
 
-dataset_input_parameters = {'preprocess': {'base': dataset_input_parameters}}
+# dataset_input_parameters = {'preprocess': {'base': dataset_input_parameters}}
+# dataset_name = 'amazon_fashion'
+dataset_name = 'amazon_cloth'
+mshi = 5
+dataset_input_parameters = {dataset_name: {}}
+
+dataset_input_parameters = {
+    'preprocess': {
+        'base': dataset_input_parameters,
+        'mshi': mshi
+    }
+}
 
 dataset_input_settings = dataset.dataset_settings_factory(
     dataset_input_parameters)
 
 methods_metrics_values = {}
+best_parameters = utils.load_best_parameters()
 for method in args.m:
 
-    path = f'data/metrics/mrr/{method}_{dataset.get_dataset_id(dataset_input_parameters)}_output.csv'
+    execution_id = joblib.hash(
+        (method, best_parameters[dataset_name][mshi][method], dataset_input_parameters,5))
+    # path = f'data/metrics/mrr/{method}_{dataset.get_dataset_id(dataset_input_parameters)}_output.csv'
+    path = f'data/metrics/mrr/{execution_id}_output.csv'
     mrrs = pd.read_csv(path)['0']
 
-    path = f'data/metrics/ndcg/{method}_{dataset.get_dataset_id(dataset_input_parameters)}_output.csv'
+    # path = f'data/metrics/ndcg/{method}_{dataset.get_dataset_id(dataset_input_parameters)}_output.csv'
+    path = f'data/metrics/ndcg/{execution_id}_output.csv'
     ndcgs = pd.read_csv(path)['0']
 
-    path = f'data/metrics/hit/{method}_{dataset.get_dataset_id(dataset_input_parameters)}_output.csv'
+    path = f'data/metrics/hit/{execution_id}_output.csv'
     hits = pd.read_csv(path)['0']
     print(hits)
     methods_metrics_values[method] = {'MRR': mrrs, 'NDCG': ndcgs, 'Hits': hits}
@@ -117,23 +133,25 @@ for metric_name in metrics_names:
     }
 
 # final_table = [[''] * (num_metrics + 1)] * (num_methods + 1)
-final_table=[['' for __ in range(num_metrics + 1)] for _ in range(num_methods + 1)]
+final_table = [
+    ['' for __ in range(num_metrics + 1)] for _ in range(num_methods + 1)
+]
 
 # i = 0
 # for method in args.m:
-    # final_table[1 + i][0] = method
-    # i += 1
+# final_table[1 + i][0] = method
+# i += 1
 
 # for method in args.m:
-    # final_table[1 + i][0] = method
-    # i += 1
+# final_table[1 + i][0] = method
+# i += 1
 i = 0
 for metric_name, methods_values in metrics_final_results.items():
-    j=0
-    final_table[0][1+i] = metric_name
+    j = 0
+    final_table[0][1 + i] = metric_name
     for method in args.m:
-        final_table[1+j][0] = METHODS_PRETTY_NAME[method]
-        final_table[1+j][1+i] = methods_values[method]
+        final_table[1 + j][0] = METHODS_PRETTY_NAME[method]
+        final_table[1 + j][1 + i] = methods_values[method]
         j += 1
     i += 1
 

@@ -79,15 +79,15 @@ def leave_one_out_experiment(recommender, method, dataset_name, train_df,
         test_neg_df = pd.concat([test_df, negatives_df],
                                 axis=0).reset_index(drop=True)
 
-        if not utils.file_exists(path):
+    # if not utils.file_exists(path):
 
-            results_df = run_rec(recommender, interactions_df,
-                                 interactions_matrix, train_df, test_neg_df,
-                                 num_users, num_items, method)
-            utils.create_path_to_file(path)
-            results_df.to_csv(path, index=False)
-        else:
-            results_df = pd.read_csv(path)
+        results_df = run_rec(recommender, interactions_df,
+                             interactions_matrix, train_df, test_neg_df,
+                             num_users, num_items, method)
+        utils.create_path_to_file(path)
+        results_df.to_csv(path, index=False)
+    # else:
+        results_df = pd.read_csv(path)
 
         results_df = results_df.loc[results_df['rank'] <= 10]
         mrr = utils.eval_mrr(results_df, test_neg_df)
@@ -132,7 +132,7 @@ def train_method(recommender, method, data):
 
 def exec_experiment(dataset_input_parameters, methods_search_parameters,
                     methods_create_function, num_negatives, dataset_name,
-                    num_executions):
+                    num_executions,best_parameters):
     interactions_df = dataset.parquet_load(
         dataset_input_settings['interactions_path'])
     num_users = interactions_df.user_id.max() + 1
@@ -151,7 +151,8 @@ def exec_experiment(dataset_input_parameters, methods_search_parameters,
 
     users = test_df.user_id.to_numpy()
 
-    if 'lightgcn' in args.m:
+    scootensor = None
+    if 'lightgcn' in args.m or 'stacking' in args.m:
         tmp_train_df = train_df.copy()
         tmp_train_df = tmp_train_df.loc[tmp_train_df.target > 0]
         tmp_train_df = tmp_train_df.groupby(['user_id', 'item_id'
@@ -174,6 +175,7 @@ def exec_experiment(dataset_input_parameters, methods_search_parameters,
             size=(num_users + num_items, num_users + num_items))
         scootensor = scootensor.coalesce()
 
+
     for method, method_search_parameters in methods_search_parameters.items():
 
         for method_parameters in method_search_parameters:
@@ -183,14 +185,17 @@ def exec_experiment(dataset_input_parameters, methods_search_parameters,
                 (method, method_parameters, dataset_input_parameters,
                  num_executions))
             method_parameters = copy(method_parameters)
-            method_parameters.update({
+            dtmp1 = {
                 'num_users': num_users,
                 'num_items': num_items,
-                'num_batchs': 200,
-                'batch_size': len(train_df) // 2
-            })
-            if method == 'lightgcn':
-                method_parameters.update({'scootensor': scootensor})
+                'num_batchs': 400,
+                'batch_size': int(len(train_df)*0.8),
+                'scootensor': scootensor,
+            }
+            method_parameters.update(dtmp1)
+            if method == 'stacking':
+                stmodels = [methods_create_function[i](utils.dict_union(best_parameters[i],dtmp1)).value_function for i in method_parameters['models']]
+                method_parameters.update({'models': stmodels})
             # method_parameters
             recommender = methods_create_function[method](method_parameters)
             leave_one_out_experiment(recommender=recommender,
@@ -254,6 +259,8 @@ else:
         'ncf': parameters.NCF_PARAMETERS,
         'bi': parameters.BI_PARAMETERS,
         'lightgcn': parameters.LIGHTGCN_PARAMETERS,
+        # 'random': [{}],
+        # 'popular': [{}],
     }
     methods_search_parameters = {
         i: methods_search_parameters[i] for i in args.m
@@ -268,6 +275,7 @@ methods_create_function = {
     'stacking': parameters.create_stacking,
     'popular': parameters.create_popular,
     'random': parameters.create_random,
+    'stacking': parameters.create_stacking,
 }
 
 if args.best:
@@ -303,4 +311,4 @@ for dataset_name in ['amazon_fashion', 'amazon_cloth']:
                         methods_create_function=methods_create_function,
                         num_negatives=99,
                         dataset_name=dataset_name,
-                        num_executions=num_executions)
+                        num_executions=num_executions,best_parameters = best_parameters[dataset_name][mshi])

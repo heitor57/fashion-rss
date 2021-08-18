@@ -43,7 +43,8 @@ argparser.add_argument('-m', nargs='*')
 args = argparser.parse_args()
 best_parameters = utils.load_best_parameters()
 
-for dataset_name in ['amazon_fashion','amazon_cloth']:
+# for dataset_name in ['amazon_fashion','amazon_cloth']:
+for dataset_name in ['amazon_fashion']:
     for mshi in [5,10]:
         dataset_input_parameters = {dataset_name: {}}
 

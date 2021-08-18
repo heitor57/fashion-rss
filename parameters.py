@@ -182,6 +182,12 @@ LIGHTGCN_PARAMETERS = [
     },
     # {'num_lat':64,'lr':0.0001},
 ]
+parameters.STACKING_PARAMETERS= [
+    # {'models': ['popular','stacking']},
+    {'models': ['popular']},
+    {'models': ['stacking']},
+    {'models': []},
+]
 
 
 def create_lightgcn(parameters):

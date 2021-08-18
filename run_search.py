@@ -79,24 +79,23 @@ def leave_one_out_experiment(recommender, method, dataset_name, train_df,
         test_neg_df = pd.concat([test_df, negatives_df],
                                 axis=0).reset_index(drop=True)
 
-    # if not utils.file_exists(path):
+        if not utils.file_exists(path):
+            results_df = run_rec(recommender, interactions_df,
+                                 interactions_matrix, train_df, test_neg_df,
+                                 num_users, num_items, method)
+            utils.create_path_to_file(path)
+            results_df.to_csv(path, index=False)
+        else:
+            results_df = pd.read_csv(path)
 
-        results_df = run_rec(recommender, interactions_df,
-                             interactions_matrix, train_df, test_neg_df,
-                             num_users, num_items, method)
-        utils.create_path_to_file(path)
-        results_df.to_csv(path, index=False)
-    # else:
-        results_df = pd.read_csv(path)
-
-        results_df = results_df.loc[results_df['rank'] <= 10]
-        mrr = utils.eval_mrr(results_df, test_neg_df)
-        mrrs.append(mrr)
-        ndcg = utils.eval_ndcg(results_df, test_df)
-        ndcgs.append(ndcg)
-        hit = utils.eval_hits(results_df, test_df)
-        hits.append(hit)
-        print('ndcg', ndcg, 'mrr', mrr, 'hits', hit)
+            results_df = results_df.loc[results_df['rank'] <= 10]
+            mrr = utils.eval_mrr(results_df, test_neg_df)
+            mrrs.append(mrr)
+            ndcg = utils.eval_ndcg(results_df, test_df)
+            ndcgs.append(ndcg)
+            hit = utils.eval_hits(results_df, test_df)
+            hits.append(hit)
+            print('ndcg', ndcg, 'mrr', mrr, 'hits', hit)
 
     path = f'data/metrics/mrr/{execution_id}_output.csv'
     utils.create_path_to_file(path)
@@ -259,6 +258,7 @@ else:
         'ncf': parameters.NCF_PARAMETERS,
         'bi': parameters.BI_PARAMETERS,
         'lightgcn': parameters.LIGHTGCN_PARAMETERS,
+        'stacking': parameters.STACKING_PARAMETERS,
         # 'random': [{}],
         # 'popular': [{}],
     }
@@ -306,9 +306,13 @@ for dataset_name in ['amazon_fashion', 'amazon_cloth']:
             methods_search_parameters = {
                 i: [best_parameters[dataset_name][mshi][i]] for i in args.m
             }
+            best_parameters_data= best_parameters[dataset_name][mshi]
+        else:
+            best_parameters_data=None
+
         exec_experiment(dataset_input_parameters=dataset_input_parameters,
                         methods_search_parameters=methods_search_parameters,
                         methods_create_function=methods_create_function,
                         num_negatives=99,
                         dataset_name=dataset_name,
-                        num_executions=num_executions,best_parameters = best_parameters[dataset_name][mshi])
+                        num_executions=num_executions,best_parameters = best_parameters_data)

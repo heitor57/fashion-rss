@@ -19,12 +19,14 @@ amazon_cloth:
     random:
       {}
     stacking:
-      models: ['popular','lightgcn']
+      #models: ['popular','lightgcn']
       #models: ['popular']
+      models: ['lightgcn']
   10:
     stacking:
-      models: ['popular','lightgcn']
+      #models: ['popular','lightgcn']
       #models: ['popular']
+      models: ['lightgcn']
     bi:
       embedding_dim: 64
       lr: 0.01
@@ -46,7 +48,8 @@ amazon_cloth:
 amazon_fashion:
   5:
     stacking:
-      models: ['popular','lightgcn']
+      #models: ['popular','lightgcn']
+      models: ['lightgcn']
       #models: ['popular']
     random:
       {}
@@ -68,8 +71,9 @@ amazon_fashion:
       num_lat: 8
   10:
     stacking:
+      models: ['lightgcn']
       #models: ['popular']
-      models: ['popular','lightgcn']
+      #models: ['popular','lightgcn']
     random:
       {}
     bi:

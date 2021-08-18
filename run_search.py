@@ -132,6 +132,7 @@ def train_method(recommender, method, data):
 def exec_experiment(dataset_input_parameters, methods_search_parameters,
                     methods_create_function, num_negatives, dataset_name,
                     num_executions,best_parameters):
+    dataset_input_settings = dataset.dataset_settings_factory(dataset_input_parameters)
     interactions_df = dataset.parquet_load(
         dataset_input_settings['interactions_path'])
     num_users = interactions_df.user_id.max() + 1
@@ -194,7 +195,10 @@ def exec_experiment(dataset_input_parameters, methods_search_parameters,
             method_parameters.update(dtmp1)
             if method == 'stacking':
                 stmodels = [methods_create_function[i](utils.dict_union(best_parameters[i],dtmp1)).value_function for i in method_parameters['models']]
+                # print(stmodels)
                 method_parameters.update({'models': stmodels})
+                # print(
+            # print(method_parameters['models'])
             # method_parameters
             recommender = methods_create_function[method](method_parameters)
             leave_one_out_experiment(recommender=recommender,
@@ -248,10 +252,11 @@ def run_rec(recommender, interactions_df, interactions_matrix, train_df,
 argparser = argparse.ArgumentParser()
 argparser.add_argument('-m', nargs='*')
 argparser.add_argument('--best', action='store_true')
+argparser.add_argument('--sample', action='store_true')
+argparser.add_argument('--num_executions', type=int)
 args = argparser.parse_args()
-if args.best:
-    best_parameters = utils.load_best_parameters()
-else:
+best_parameters = utils.load_best_parameters()
+if not args.best:
     methods_search_parameters = {
         'svd': parameters.SVD_PARAMETERS,
         'svdpp': parameters.SVDPP_PARAMETERS,
@@ -278,13 +283,15 @@ methods_create_function = {
     'stacking': parameters.create_stacking,
 }
 
-if args.best:
-    num_executions = 5
-else:
-    num_executions = 1
+num_executions =args.num_executions
+# if args.best:
+    # num_executions = 5
+# else:
+    # num_executions = 1
 
-for dataset_name in ['amazon_cloth']:
-# for dataset_name in ['amazon_fashion', 'amazon_cloth']:
+# for dataset_name in ['amazon_cloth']:
+for dataset_name in ['amazon_fashion', 'amazon_cloth']:
+# for dataset_name in ['amazon_fashion',]:
     for mshi in [5, 10]:
         dataset_input_parameters = {dataset_name: {}}
 
@@ -294,22 +301,20 @@ for dataset_name in ['amazon_cloth']:
                 'mshi': mshi
             }
         }
-        if not args.best:
+        if args.sample:
             dataset_input_parameters = {
                 'sample': {
                     'base': dataset_input_parameters,
                 }
             }
 
-        dataset_input_settings = dataset.dataset_settings_factory(
-            dataset_input_parameters)
         if args.best:
+            dataset_input_settings = dataset.dataset_settings_factory(
+                dataset_input_parameters)
             methods_search_parameters = {
                 i: [best_parameters[dataset_name][mshi][i]] for i in args.m
             }
-            best_parameters_data= best_parameters[dataset_name][mshi]
-        else:
-            best_parameters_data=None
+        best_parameters_data= best_parameters[dataset_name][mshi]
 
         exec_experiment(dataset_input_parameters=dataset_input_parameters,
                         methods_search_parameters=methods_search_parameters,

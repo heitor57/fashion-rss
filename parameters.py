@@ -183,10 +183,14 @@ LIGHTGCN_PARAMETERS = [
     # {'num_lat':64,'lr':0.0001},
 ]
 STACKING_PARAMETERS= [
-    # {'models': ['popular','stacking']},
+    {'models': ['popular','lightgcn']},
     {'models': ['popular']},
-    {'models': ['stacking']},
-    {'models': []},
+    {'models': ['lightgcn']},
+    # {'models': []},
+    {'models': ['popular','lightgcn'],'use_context':False},
+    {'models': ['popular'],'use_context':False},
+    {'models': ['lightgcn'],'use_context':False},
+    # {'models': [],'use_context':False},
 ]
 
 
@@ -278,6 +282,10 @@ def create_stacking(parameters):
         verbose=2)
     vf = value_functions.Stacking(models=parameters['models'],
                                   meta_learner=meta_learner)
+    if 'use_context' in parameters:
+        use_context=parameters['use_context']
+    else:
+        use_context=True
     recommender = recommenders.SimpleRecommender(value_function=vf,
-                                                 name='stacking')
+                                                 name='stacking',use_context=use_context)
     return recommender

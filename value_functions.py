@@ -639,10 +639,11 @@ def make_embedding_construction(trans, compression_factor,
 
 class Stacking(ValueFunction):
 
-    def __init__(self, models=None, meta_learner=None, *args, **kwargs):
+    def __init__(self, models=None, meta_learner=None, use_context=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.models = models
         self.meta_learner = meta_learner
+        self.use_context = use_context
 
     def preprocess_interaction_features(self, dataset_name, interactions_df):
         if dataset_name in[ 'amazon_fashion','amazon_cloth']:
@@ -769,26 +770,27 @@ class Stacking(ValueFunction):
             # columns = [i for i in res_dummies.columns if re.match(pattern,i)]
             # interaction_features = np.array(res_dummies[columns])
             # date_data = pd.get_dummies(train_df[['day','week']]).to_numpy()
-            self.interaction_context_transformer = TopPopularFeatures()
-            self.interaction_context_transformer.fit(train_df)
-            interaction_features = self.interaction_context_transformer.transform(
-                train_df)
-            # print(features.shape,interaction_features.shape)
-            features = np.hstack([features, interaction_features])
-            uf1 = train_df.loc[train_df.target > 0].groupby(
-                'user_id')['item_id'].count()
-            uf2 = train_df.groupby('user_id')['item_id'].count()
-            self.user_features = defaultdict(
-                lambda: [0, 0],
-                pd.concat([uf1, uf2], axis=1).to_dict())
+            if self.use_context:
+                self.interaction_context_transformer = TopPopularFeatures()
+                self.interaction_context_transformer.fit(train_df)
+                interaction_features = self.interaction_context_transformer.transform(
+                    train_df)
+                # print(features.shape,interaction_features.shape)
+                features = np.hstack([features, interaction_features])
+                uf1 = train_df.loc[train_df.target > 0].groupby(
+                    'user_id')['item_id'].count()
+                uf2 = train_df.groupby('user_id')['item_id'].count()
+                self.user_features = defaultdict(
+                    lambda: [0, 0],
+                    pd.concat([uf1, uf2], axis=1).to_dict())
 
-            features = np.hstack([
-                features,
-                np.array([
-                    self.user_features[user_id]
-                    for user_id in train_df_models.user_id
+                features = np.hstack([
+                    features,
+                    np.array([
+                        self.user_features[user_id]
+                        for user_id in train_df_models.user_id
+                    ])
                 ])
-            ])
 
             # user_features_df['items_clicked'] =train_df_original.loc[train_df_original.target==1].groupby('user_id')['item_id'].nunique()
 
@@ -817,15 +819,16 @@ class Stacking(ValueFunction):
             models_values)
 
         # interaction_features = self.preprocess_interaction_features(self.dataset_train['name'],interaction_context)
-        interaction_features = self.interaction_context_transformer.transform(
-            interaction_context)
-        # features = models_values
-        # print(features)
-        # print(features.shape)
-        # user_features = pd.DataFrame([self.users_features[i] for i in users]).to_numpy()
+        if self.use_context:
+            interaction_features = self.interaction_context_transformer.transform(
+                interaction_context)
+            # features = models_values
+            # print(features)
+            # print(features.shape)
+            # user_features = pd.DataFrame([self.users_features[i] for i in users]).to_numpy()
 
-        user_features = np.array([self.user_features[user] for user in users])
-        features = np.hstack([features, interaction_features, user_features])
+            user_features = np.array([self.user_features[user] for user in users])
+            features = np.hstack([features, interaction_features, user_features])
 
         # items_features = np.array([self.attributes_df.iloc[i][self.items_columns].to_numpy() for i in items])
         # features = np.hstack([features, interaction_context[self.users_columns],items_features])

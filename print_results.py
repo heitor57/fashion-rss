@@ -54,7 +54,7 @@ for dataset_name in ['amazon_fashion']:
                 'mshi': mshi
             }
         }
-        print(dataset_name,mshi)
+        # print(dataset_name,mshi)
 
         dataset_input_settings = dataset.dataset_settings_factory(
             dataset_input_parameters)
@@ -120,7 +120,7 @@ for dataset_name in ['amazon_fashion']:
         for method in args.m:
             d= {k: np.mean(v[metric]) for k, v in methods_metrics_values[method].items()}
             d={k: v for k, v in sorted(d.items(), key=lambda item: item[1],reverse=True)}
-            print(list(d.keys())[0],list(d.values())[0])
+            # print(list(d.keys())[0],list(d.values())[0])
             best_parameters[dataset_name][mshi][method] = eval(list(d.keys())[0])
             # for k, v in d.items():
                 # print(k,v)

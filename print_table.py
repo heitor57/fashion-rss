@@ -73,9 +73,10 @@ args = argparser.parse_args()
 # dataset_input_parameters = {'amazon_cloth': {}}
 
 # dataset_input_parameters = {'preprocess': {'base': dataset_input_parameters}}
-# dataset_name = 'amazon_fashion'
-dataset_name = 'amazon_cloth'
+dataset_name = 'amazon_fashion'
+# dataset_name = 'amazon_cloth'
 mshi = 5
+# mshi = 10
 dataset_input_parameters = {dataset_name: {}}
 
 dataset_input_parameters = {

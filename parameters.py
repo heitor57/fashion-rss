@@ -7,6 +7,7 @@ import dataset
 import neural_networks
 import value_functions
 import math
+from sklearn.experimental import enable_halving_search_cv # noqa
 
 
 def create_popular(parameters):
@@ -222,15 +223,42 @@ def FindLayerNodesLinear(n_layers, first_layer_nodes, last_layer_nodes):
 def create_stacking(parameters):
     meta_learner_parameters = [
         dict(hidden_layer_sizes=[
-            [100, 10, 3],
-            [200, 20, 5],
-            FindLayerNodesLinear(50,10,5),
-            FindLayerNodesLinear(40,10,4),
-            FindLayerNodesLinear(100,10,5),
-            [10, 10, 10],
-            [10, 8, 5],
-            [10, 5, 3],
-        ],),
+            # [100],
+            # [100,20],
+            # [100,20,5],
+            # [200,20,5],
+            # [20,5],
+            # [50,5],
+            # [30],
+            # [30,30],
+            # [60,60],
+            # [200, 20, 5],
+            # FindLayerNodesLinear(5,50,10),
+            # FindLayerNodesLinear(4,40,10),
+            # FindLayerNodesLinear(5,100,10),
+                    [10, 10, 10],
+                    [10, 8, 5],
+                    [10, 5, 3],
+                    [10, 10],
+                    [20, 10],
+                    [6, 6, 6, 6],
+                    [8, 8, 8, 8],
+                    [8, 6, 4, 4],
+            [100,5],
+            # [200,5],
+            FindLayerNodesLinear(4,16,2),
+            FindLayerNodesLinear(5,16,2),
+            FindLayerNodesLinear(6,16,2),
+            FindLayerNodesLinear(3,32,2),
+            # FindLayerNodesLinear(3,100,2),
+            # FindLayerNodesLinear(5,20,3),
+            # FindLayerNodesLinear(5,50,3),
+            # FindLayerNodesLinear(4,20,3),
+            # FindLayerNodesLinear(4,50,3),
+            # FindLayerNodesLinear(3,20,3),
+            # FindLayerNodesLinear(3,50,3),
+        ],activation=['relu']
+             ),
     ]
 
     meta_learner = sklearn.model_selection.GridSearchCV(

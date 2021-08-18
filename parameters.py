@@ -182,7 +182,7 @@ LIGHTGCN_PARAMETERS = [
     },
     # {'num_lat':64,'lr':0.0001},
 ]
-parameters.STACKING_PARAMETERS= [
+STACKING_PARAMETERS= [
     # {'models': ['popular','stacking']},
     {'models': ['popular']},
     {'models': ['stacking']},
@@ -231,8 +231,8 @@ def create_stacking(parameters):
         dict(hidden_layer_sizes=[
             # [100],
             # [100,20],
-            # [100,20,5],
-            # [200,20,5],
+            [100,20,5],
+            [200,20,5],
             # [20,5],
             # [50,5],
             # [30],
@@ -256,6 +256,9 @@ def create_stacking(parameters):
             FindLayerNodesLinear(5,16,2),
             FindLayerNodesLinear(6,16,2),
             FindLayerNodesLinear(3,32,2),
+            FindLayerNodesLinear(3,300,2),
+            FindLayerNodesLinear(4,300,2),
+            FindLayerNodesLinear(3,100,10),
             # FindLayerNodesLinear(3,100,2),
             # FindLayerNodesLinear(5,20,3),
             # FindLayerNodesLinear(5,50,3),

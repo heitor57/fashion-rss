@@ -79,7 +79,7 @@ def leave_one_out_experiment(recommender, method, dataset_name, train_df,
         test_neg_df = pd.concat([test_df, negatives_df],
                                 axis=0).reset_index(drop=True)
 
-        if not utils.file_exists(path):
+        if True or not utils.file_exists(path):
             results_df = run_rec(recommender, interactions_df,
                                  interactions_matrix, train_df, test_neg_df,
                                  num_users, num_items, method)
@@ -283,7 +283,8 @@ if args.best:
 else:
     num_executions = 1
 
-for dataset_name in ['amazon_fashion', 'amazon_cloth']:
+for dataset_name in ['amazon_cloth']:
+# for dataset_name in ['amazon_fashion', 'amazon_cloth']:
     for mshi in [5, 10]:
         dataset_input_parameters = {dataset_name: {}}
 

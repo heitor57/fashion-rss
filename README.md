@@ -1,5 +1,4 @@
 # fashion-rss
-:running_shirt_with_sash: Fashion Recommender System
 
 This repository contains several traditional recommendation systems and a contextual (proposal) assembly recommendation system, on which a feature engineering process was made, applied to the fashion domain for a data mining project.
 
